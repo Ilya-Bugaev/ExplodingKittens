@@ -1,0 +1,152 @@
+@startuml
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+title Взрывные котята — Программная Диаграмма
+
+' ================= 1. ИНФРАСТРУКТУРА (Хранение) =================
+interface IGameRepository {
+  +saveGame(game: Game): void
+  +saveMove(gameId: Int, move: Move): void
+  +getHistory(gameId: Int): List<Move>
+  +getAllFinishedGames(): List<GameSummary>
+  +getPlayerStats(playerId: Int): PlayerStats
+  +getAllPlayerStats(): List<PlayerStats>
+  +getKnownPlayerNames(): List<String>
+  +registerPlayer(name: String): Int
+  +findPlayerId(name: String): Int?
+}
+
+class SqlGameRepository
+
+' ================= 2. ЛОГИКА: ВАЛИДАЦИЯ =================
+interface IMoveValidator {
+  +validate(game: Game, move: Move): ValidationResult
+}
+
+class EKMoveValidator
+
+' ================= 3. ЛОГИКА: СЕРВИСЫ =================
+class GameplayService {
+  -repo: IGameRepository
+  -validator: IMoveValidator
+  +startGame(playerNames: List<String>): Int
+  +playMove(move: Move): ValidationResult
+  +resolveNopeWindow(gameId: Int): ValidationResult
+  +endGame(gameId: Int): void
+  +getCurrentGame(gameId: Int): Game
+}
+
+class HistoryService {
+  -repo: IGameRepository
+  +getHistory(gameId: Int): List<Move>
+  +getAllFinishedGames(): List<GameSummary>
+  +getLeaderboard(): List<PlayerStats>
+  +getPlayerStats(playerId: Int): PlayerStats
+}
+
+' ================= 4. DTO =================
+class ValidationResult {
+  +isValid: Boolean
+  +errors: List<String>
+  +awaitingNope: Boolean
+  +pendingMoveId: Int?
+}
+
+class GameSummary {
+  +gameId: Int
+  +date: DateTime
+  +winner: String
+  +turns: Int
+}
+
+class PlayerStats {
+  +playerId: Int
+  +nickname: String
+  +wins: Int
+  +gamesPlayed: Int
+  +winRate: Double
+  +rating: Double
+}
+
+' ================= 5. REPLAY =================
+class ReplaySystem {
+  -repo: IGameRepository
+  -moves: List<Move>
+  -currentStep: Int
+  -shadowGame: Game
+  +loadGame(gameId: Int): void
+  +nextStep(): Move?
+  +previousStep(): Move?
+  +getCurrentState(): Game
+  +isFinished(): Boolean
+}
+
+' ================= 6. UI: ИНТЕРФЕЙСЫ ЭКРАНОВ =================
+interface IGameScreen {
+  +initGame(playerNames: List<String>): void
+  +onCardSelected(cardId: Int): void
+  +onTargetSelected(targetId: Int): void
+  +onNopeDecision(playerId: Int, useNope: Boolean): void
+  +showError(message: String): void
+  +updateState(game: Game): void
+}
+
+interface IHistoryScreen {
+  +loadHistory(): void
+  +startReplay(gameId: Int): void
+  +nextStep(): void
+  +previousStep(): void
+}
+
+interface ILeaderboardScreen {
+  +loadLeaderboard(): void
+  +showTopPlayers(): void
+}
+
+' ================= 7. UI: КОНСОЛЬНЫЙ БАЗИС =================
+abstract class ConsoleBaseScreen {
+  -scanner: Scanner
+  +readLine(): String
+  +readInt(): Int
+  +print(message: String): void
+  +printLine(message: String): void
+  +clearScreen(): void
+}
+
+class ConsoleGameScreen
+class ConsoleHistoryScreen
+class ConsoleLeaderboardScreen
+
+' ================= СВЯЗИ =================
+' Сервисы зависят от хранилища и валидатора
+GameplayService --> IGameRepository : сохраняет партии и ходы
+GameplayService --> IMoveValidator : проверяет правила ходов
+GameplayService ..> ValidationResult : возвращает результат хода
+
+HistoryService --> IGameRepository : читает историю и статистику
+HistoryService ..> PlayerStats : рассчитывает рейтинг
+HistoryService ..> GameSummary : формирует сводку партии
+
+' Replay работает с хранилищем
+ReplaySystem --> IGameRepository : загружает историю ходов
+ReplaySystem ..> Game : создаёт теневую копию
+
+' Экраны зависят от сервисов
+IGameScreen --> GameplayService : отправляет ходы и решения по Nope
+IHistoryScreen --> HistoryService : запрашивает историю
+IHistoryScreen --> ReplaySystem : управляет воспроизведением
+ILeaderboardScreen --> HistoryService : запрашивает лидерборд
+
+' Реализации интерфейсов
+IGameRepository <|-- SqlGameRepository
+IMoveValidator <|-- EKMoveValidator
+IGameScreen <|-- ConsoleGameScreen
+IHistoryScreen <|-- ConsoleHistoryScreen
+ILeaderboardScreen <|-- ConsoleLeaderboardScreen
+
+' Консольные экраны наследуют базовый
+ConsoleBaseScreen <|-- ConsoleGameScreen
+ConsoleBaseScreen <|-- ConsoleHistoryScreen
+ConsoleBaseScreen <|-- ConsoleLeaderboardScreen
+
+@enduml
