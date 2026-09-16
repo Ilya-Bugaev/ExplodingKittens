@@ -20,7 +20,7 @@
 ### Предметная модель
 Описывает **что существует в задаче**: карты, игроков, колоду, партию, ходы.
 
-📄 [`docs/domain.png`](docs/domain.png) — UML-диаграмма предметных классов
+📄 [`docs/domain_class_diagram.png`](docs/domain_class_diagram.png) — UML-диаграмма предметных классов
 
 Ключевые сущности:
 
@@ -34,13 +34,10 @@
 
 - `CardType`, `MoveType`, `GameState` — перечисления
 
-В предметной модели **нет** технических классов: ни `Service`, ни `Repository`, ни `Factory`.
-Всё это относится к программной модели.
-
 ### Программная модель
 Описывает **как организован код**: сервисы, валидация, UI.
 
-📄 [`docs/implementation.png`](docs/implementation.png) — UML-диаграмма программных классов
+📄 [`docs/implementation_class_diagram.png`](docs/implementation_class_diagram.png) — UML-диаграмма программных классов
 
 Ключевые элементы:
 
