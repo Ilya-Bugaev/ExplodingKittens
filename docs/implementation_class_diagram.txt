@@ -4,19 +4,28 @@ skinparam linetype ortho
 title Взрывные котята — Программная Диаграмма
 
 ' ================= 1. ИНФРАСТРУКТУРА (Хранение) =================
-interface IGameRepository {
+interface IHistoryRepository {
   +saveGame(game: Game): void
   +saveMove(gameId: Int, move: Move): void
   +getHistory(gameId: Int): List<Move>
   +getAllFinishedGames(): List<GameSummary>
+}
+
+interface IStatisticsRepository {
   +getPlayerStats(playerId: Int): PlayerStats
   +getAllPlayerStats(): List<PlayerStats>
+  +updateStats(stats: PlayerStats): void
+}
+
+interface IPlayerRepository {
   +getKnownPlayerNames(): List<String>
   +registerPlayer(name: String): Int
   +findPlayerId(name: String): Int?
 }
 
-class SqlGameRepository
+class SqlHistoryRepository
+class SqlStatisticsRepository
+class SqlPlayerRepository
 
 ' ================= 2. ЛОГИКА: ВАЛИДАЦИЯ =================
 interface IMoveValidator {
@@ -25,52 +34,97 @@ interface IMoveValidator {
 
 class EKMoveValidator
 
-' ================= 3. ЛОГИКА: СЕРВИСЫ =================
+' ================= 3. ЛОГИКА: РЕЗУЛЬТАТ ХОДА =================
+' ИСПРАВЛЕНО: AwaitingNope возвращён — окно Nope является частью правил
+' игры, а не деталью реализации, которую можно было опустить.
+' AwaitingNope отличается от AwaitingResponse: ответить Nope может
+' ЛЮБОЙ игрок (нет конкретного responderId), а на Favor/тройку отвечает
+' только один конкретный игрок.
+abstract class ValidationResult
+class Accepted {
+  +move: Move
+}
+class Rejected {
+  +errors: List<String>
+}
+class AwaitingNope {
+  +pendingMove: Move
+}
+class AwaitingResponse {
+  +pendingMove: Move
+  +responderId: Int
+}
+ValidationResult <|-- Accepted
+ValidationResult <|-- Rejected
+ValidationResult <|-- AwaitingNope
+ValidationResult <|-- AwaitingResponse
+
+' ================= 4. ЛОГИКА: СЕРВИСЫ =================
 class GameplayService {
-  -repo: IGameRepository
+  -historyRepo: IHistoryRepository
   -validator: IMoveValidator
+  -playerRegistry: PlayerRegistryService
+  -statistics: StatisticsService
   +startGame(playerNames: List<String>): Int
   +playMove(move: Move): ValidationResult
   +resolveNopeWindow(gameId: Int): ValidationResult
   +endGame(gameId: Int): void
   +getCurrentGame(gameId: Int): Game
 }
+GameplayService --> IHistoryRepository : сохраняет партии и ходы
+GameplayService --> IMoveValidator : проверяет правила ходов
+GameplayService --> PlayerRegistryService : регистрирует игроков партии
+GameplayService --> StatisticsService : обновляет статистику по завершении
+GameplayService ..> ValidationResult : возвращает результат хода
+
+class PlayerRegistryService {
+  -repo: IPlayerRepository
+  +getKnownPlayerNames(): List<String>
+  +registerPlayer(name: String): Int
+  +findPlayerId(name: String): Int?
+}
+PlayerRegistryService --> IPlayerRepository
 
 class HistoryService {
-  -repo: IGameRepository
+  -repo: IHistoryRepository
   +getHistory(gameId: Int): List<Move>
   +getAllFinishedGames(): List<GameSummary>
+}
+HistoryService --> IHistoryRepository : читает историю
+HistoryService ..> GameSummary : формирует сводку партии
+
+class StatisticsService {
+  -repo: IStatisticsRepository
   +getLeaderboard(): List<PlayerStats>
   +getPlayerStats(playerId: Int): PlayerStats
+  +getAllPlayerStats(): List<PlayerStats>
+  +updateStats(gameSummary: GameSummary): void
+  -mergeStats(current: PlayerStats, gameSummary: GameSummary): PlayerStats
 }
+StatisticsService --> IStatisticsRepository : читает текущий PlayerStats,\nпишет пересчитанный PlayerStats
+StatisticsService ..> PlayerStats
 
-' ================= 4. DTO =================
-class ValidationResult {
-  +isValid: Boolean
-  +errors: List<String>
-  +awaitingNope: Boolean
-  +pendingMoveId: Int?
-}
-
+' ================= 5. DTO =================
 class GameSummary {
   +gameId: Int
   +date: DateTime
+  +players: List<String>
   +winner: String
   +turns: Int
 }
 
 class PlayerStats {
   +playerId: Int
-  +nickname: String
+  +name: String
   +wins: Int
   +gamesPlayed: Int
   +winRate: Double
   +rating: Double
 }
 
-' ================= 5. REPLAY =================
+' ================= 6. REPLAY =================
 class ReplaySystem {
-  -repo: IGameRepository
+  -repo: IHistoryRepository
   -moves: List<Move>
   -currentStep: Int
   -shadowGame: Game
@@ -80,13 +134,16 @@ class ReplaySystem {
   +getCurrentState(): Game
   +isFinished(): Boolean
 }
+ReplaySystem --> IHistoryRepository : загружает историю ходов
+ReplaySystem ..> Game : создаёт теневую копию
 
-' ================= 6. UI: ИНТЕРФЕЙСЫ ЭКРАНОВ =================
+' ================= 7. UI: ИНТЕРФЕЙСЫ ЭКРАНОВ =================
 interface IGameScreen {
   +initGame(playerNames: List<String>): void
-  +onCardSelected(cardId: Int): void
-  +onTargetSelected(targetId: Int): void
-  +onNopeDecision(playerId: Int, useNope: Boolean): void
+  +onMoveSubmitted(move: Move): void
+  +onResolveNopeWindow(): void
+  +showAwaitingNope(pendingMove: Move): void
+  +showAwaitingResponse(pendingMove: Move, responderId: Int): void
   +showError(message: String): void
   +updateState(game: Game): void
 }
@@ -103,7 +160,7 @@ interface ILeaderboardScreen {
   +showTopPlayers(): void
 }
 
-' ================= 7. UI: КОНСОЛЬНЫЙ БАЗИС =================
+' ================= 8. UI: КОНСОЛЬНЫЙ БАЗИС =================
 abstract class ConsoleBaseScreen {
   -scanner: Scanner
   +readLine(): String
@@ -117,34 +174,21 @@ class ConsoleGameScreen
 class ConsoleHistoryScreen
 class ConsoleLeaderboardScreen
 
-' ================= СВЯЗИ =================
-' Сервисы зависят от хранилища и валидатора
-GameplayService --> IGameRepository : сохраняет партии и ходы
-GameplayService --> IMoveValidator : проверяет правила ходов
-GameplayService ..> ValidationResult : возвращает результат хода
-
-HistoryService --> IGameRepository : читает историю и статистику
-HistoryService ..> PlayerStats : рассчитывает рейтинг
-HistoryService ..> GameSummary : формирует сводку партии
-
-' Replay работает с хранилищем
-ReplaySystem --> IGameRepository : загружает историю ходов
-ReplaySystem ..> Game : создаёт теневую копию
-
-' Экраны зависят от сервисов
-IGameScreen --> GameplayService : отправляет ходы и решения по Nope
+' ================= СВЯЗИ: ЭКРАНЫ =================
+IGameScreen --> GameplayService : отправляет ходы, закрывает окно Nope
 IHistoryScreen --> HistoryService : запрашивает историю
 IHistoryScreen --> ReplaySystem : управляет воспроизведением
-ILeaderboardScreen --> HistoryService : запрашивает лидерборд
+ILeaderboardScreen --> StatisticsService : запрашивает лидерборд
 
-' Реализации интерфейсов
-IGameRepository <|-- SqlGameRepository
+' ================= РЕАЛИЗАЦИИ =================
+IHistoryRepository <|-- SqlHistoryRepository
+IStatisticsRepository <|-- SqlStatisticsRepository
+IPlayerRepository <|-- SqlPlayerRepository
 IMoveValidator <|-- EKMoveValidator
 IGameScreen <|-- ConsoleGameScreen
 IHistoryScreen <|-- ConsoleHistoryScreen
 ILeaderboardScreen <|-- ConsoleLeaderboardScreen
 
-' Консольные экраны наследуют базовый
 ConsoleBaseScreen <|-- ConsoleGameScreen
 ConsoleBaseScreen <|-- ConsoleHistoryScreen
 ConsoleBaseScreen <|-- ConsoleLeaderboardScreen
