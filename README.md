@@ -6,7 +6,7 @@
 
 ## Правила
 
-- [Правила игры на Mosigra](https://www.mosigra.ru/image/data/mosigra.product.other/562/818/Kotyata18+_Rules.pdf?srsltid=AU7gw4VlaLgQSw_MwA9TLNlNtbHysUNKC_qJFmWtcRKGpH2yijk12rvq)
+- [Официальные правила](https://cdn.shopify.com/s/files/1/0345/9180/1483/files/ekoe-instructions-russian.pdf?v=1743802429)
 
 ## Что умеет приложение
 
@@ -18,33 +18,38 @@
 - Воспроизведение (replay) завершённых партий
 
 ### Предметная модель
+
 Описывает **что существует в задаче**: карты, игроков, колоду, партию, ходы.
+Не содержит технических классов — только сущности и их естественные связи.
 
 📄 [`docs/domain_class_diagram.png`](docs/domain_class_diagram.png) — UML-диаграмма предметных классов
 
-Ключевые сущности:
+**Ключевые сущности:**
 
 - `Card`, `Deck`, `DiscardPile` — карты и их контейнеры
-
 - `Player` — участник партии
-
 - `Move` — атомарное событие хода
-
 - `Game` — состояние партии
 
-- `CardType`, `MoveType`, `GameState` — перечисления
-
 ### Программная модель
-Описывает **как организован код**: сервисы, валидация, UI.
+
+Описывает **как организован код**: сервисы, валидацию, хранение, UI.
 
 📄 [`docs/implementation_class_diagram.png`](docs/implementation_class_diagram.png) — UML-диаграмма программных классов
 
-Ключевые элементы:
+**Ключевые элементы:**
 
-- `GameplayService` — оркестратор партий (создание, ходы, завершение)
+- `GameplayService` — оркестратор партий: создание, подача ходов, разрешение окна `Nope`,
+  завершение. Хранит активные партии, делегирует валидацию и статистику другим компонентам.
+- `IMoveValidator` / `EKMoveValidator` — проверка ходов по правилам игры.
+- `ValidationResult` — результат обработки хода. **Sealed-иерархия** из четырёх вариантов:
+  - `Accepted` — ход принят и применён;
+  - `Rejected` — ход отклонён, есть список ошибок;
+  - `AwaitingNope` — ход принят предварительно, открыто окно `Nope`;
+  - `AwaitingResponse` — ход требует ответа конкретного игрока (`Favor`, комбо).
+- `PlayerRegistryService` — реестр известных игроков.
+- `HistoryService` — чтение истории завершённых партий.
+- `StatisticsService` — агрегация статистики из сводок партий.
+- `ReplaySystem` — пошаговое воспроизведение завершённой партии на теневой копии `Game`.
+- `IGameScreen` / `ConsoleGameScreen` — интерфейс взаимодействия с пользователем.
 
-- `IMoveValidator` / `EKMoveValidator` — проверка ходов по правилам
-
-- `ValidationResult` — результат валидации
-
-- `IGameScreen` / `ConsoleGameScreen` — интерфейс взаимодействия
