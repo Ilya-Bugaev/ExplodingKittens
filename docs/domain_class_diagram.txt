@@ -3,6 +3,40 @@ skinparam classAttributeIconSize 0
 skinparam linetype ortho
 title Взрывные котята — Предметная Диаграмма Классов
 
+' ================= ПЕРЕЧИСЛЕНИЯ =================
+enum CardType {
+    EXPLODING_KITTEN
+    DEFUSE
+    NOPE
+    ATTACK
+    SKIP
+    FAVOR
+    SHUFFLE
+    SEE_FUTURE
+    CAT_BEARD
+    CAT_TACO
+    CAT_HAIRY_POTATO
+    CAT_CATERMELON
+    CAT_RAINBOW_RALPHING
+}
+
+' ИСПРАВЛЕНО: добавлен START — системное событие первичной раздачи,
+' без него ReplaySystem не знает начальное состояние партии.
+enum MoveType {
+    START
+    DRAW
+    PLAY_CARD
+    PLAY_TWO_OF_A_KIND
+    PLAY_THREE_OF_A_KIND
+    PLAY_FIVE_DIFFERENT
+    RESOLVE_PENDING
+}
+
+enum GameState {
+    SETUP
+    IN_PROGRESS
+    FINISHED
+}
 
 ' ================= КАРТА =================
 class Card {
@@ -53,6 +87,8 @@ class Move {
     +requestedCardType: CardType?
     +placedKittenPosition: Int?
     +eliminated: Boolean
+    +initialHands: Map<Int, List<Card>>?
+    +initialDeckOrder: List<Card>?
 }
 
 ' ================= ПАРТИЯ =================
@@ -85,7 +121,7 @@ Move "0..*" --> "0..1" Player : цель
 Move "0..1" --> "1" Move : отменяет
 
 Game "1" --> "0..1" Player : победитель
-Game "1" --> "0..1" Move : ожидает разрешения
+Game "1" --> "0..1" Move : ожидает разрешения (окно Nope / ответ игрока)
 Game "1" --> "0..1" Card : ожидает обезвреживания
 
 @enduml
