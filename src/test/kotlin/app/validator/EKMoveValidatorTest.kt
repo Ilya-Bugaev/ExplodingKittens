@@ -1,12 +1,15 @@
 package app.validator
 
 import app.dto.ValidationResult
+import domain.Card
+import domain.CardType
 import domain.Game
 import domain.Move
 import domain.MoveType
 import domain.Player
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import kotlin.collections.get
 import kotlin.random.Random
 
 
@@ -154,20 +157,129 @@ class EKMoveValidatorTest {
         assertTrue((result as ValidationResult.Rejected).errors.any { "deck" in it })
     }
 
-    // PLAY_CARD пока проходит как заглушка — проверяем, что не падает
+    // PLAY_CARD: карта не в руке — отклоняется.
     @Test
-    fun `PLAY_CARD is currently accepted as placeholder`() {
+    fun `PLAY_CARD with card not in hand is rejected`() {
         val game = startedGame("Аня", "Боря")
         val author = game.players[0]
-        val card = author.hand.first()
+        val notInHand = Card(9999, CardType.SKIP)
 
         val move = Move(
             0, 1, MoveType.PLAY_CARD,
             author = author,
-            cardsPlayed = listOf(card)
+            cardsPlayed = listOf(notInHand)
         )
         val result = validator.validate(game, move)
 
+        assertTrue(result is ValidationResult.Rejected)
+    }
+
+    // PLAY_CARD: пустой список карт — отклоняется.
+    @Test
+    fun `PLAY_CARD with empty cards is rejected`() {
+        val game = startedGame("Аня", "Боря")
+        val author = game.players[0]
+
+        val move = Move(0, 1, MoveType.PLAY_CARD, author = author, cardsPlayed = emptyList())
+        val result = validator.validate(game, move)
+
+        assertTrue(result is ValidationResult.Rejected)
+    }
+
+    // PLAY_CARD: взрывного котёнка играть нельзя.
+    @Test
+    fun `PLAY_CARD exploding kitten is rejected`() {
+        val game = startedGame("Аня", "Боря")
+        val author = game.players[0]
+        val kitten = Card(9999, CardType.EXPLODING_KITTEN)
+        author.addCard(kitten)
+
+        val move = Move(0, 1, MoveType.PLAY_CARD, author = author, cardsPlayed = listOf(kitten))
+        val result = validator.validate(game, move)
+
+        assertTrue(result is ValidationResult.Rejected)
+    }
+
+    // PLAY_CARD: кошкокарту нельзя играть одиночно.
+    @Test
+    fun `PLAY_CARD cat card alone is rejected`() {
+        val game = startedGame("Аня", "Боря")
+        val author = game.players[0]
+        val catCard = Card(9999, CardType.CAT_TACO)
+        author.addCard(catCard)
+
+        val move = Move(0, 1, MoveType.PLAY_CARD, author = author, cardsPlayed = listOf(catCard))
+        val result = validator.validate(game, move)
+
+        assertTrue(result is ValidationResult.Rejected)
+    }
+
+    // PLAY_CARD: SKIP проходит, если карта в руке.
+    @Test
+    fun `PLAY_CARD SKIP is accepted when in hand`() {
+        val game = startedGame("Аня", "Боря")
+        val author = game.players[0]
+        val skip = Card(9999, CardType.SKIP)
+        author.addCard(skip)
+
+        val move = Move(0, 1, MoveType.PLAY_CARD, author = author, cardsPlayed = listOf(skip))
+        val result = validator.validate(game, move)
+
         assertTrue(result is ValidationResult.Accepted)
+    }
+
+    // PLAY_CARD: SHUFFLE проходит, если карта в руке.
+    @Test
+    fun `PLAY_CARD SHUFFLE is accepted when in hand`() {
+        val game = startedGame("Аня", "Боря")
+        val author = game.players[0]
+        val shuffle = Card(9999, CardType.SHUFFLE)
+        author.addCard(shuffle)
+
+        val move = Move(0, 1, MoveType.PLAY_CARD, author = author, cardsPlayed = listOf(shuffle))
+        val result = validator.validate(game, move)
+
+        assertTrue(result is ValidationResult.Accepted)
+    }
+
+    // PLAY_CARD: SEE_FUTURE проходит, если карта в руке.
+    @Test
+    fun `PLAY_CARD SEE_FUTURE is accepted when in hand`() {
+        val game = startedGame("Аня", "Боря")
+        val author = game.players[0]
+        val seeFuture = Card(9999, CardType.SEE_FUTURE)
+        author.addCard(seeFuture)
+
+        val move = Move(0, 1, MoveType.PLAY_CARD, author = author, cardsPlayed = listOf(seeFuture))
+        val result = validator.validate(game, move)
+
+        assertTrue(result is ValidationResult.Accepted)
+    }
+
+    // PLAY_CARD: ATTACK проходит, если есть живой соперник.
+    @Test
+    fun `PLAY_CARD ATTACK is accepted when opponent alive`() {
+        val game = startedGame("Аня", "Боря")
+        val author = game.players[0]
+        val attack = Card(9999, CardType.ATTACK)
+        author.addCard(attack)
+
+        val move = Move(0, 1, MoveType.PLAY_CARD, author = author, cardsPlayed = listOf(attack))
+        val result = validator.validate(game, move)
+
+        assertTrue(result is ValidationResult.Accepted)
+    }
+
+    // PLAY_CARD: DEFUSE пока отклоняется как нереализованный.
+    @Test
+    fun `PLAY_CARD DEFUSE is rejected as not implemented`() {
+        val game = startedGame("Аня", "Боря")
+        val author = game.players[0]
+        val defuse = author.findCardsOfType(CardType.DEFUSE).first()
+
+        val move = Move(0, 1, MoveType.PLAY_CARD, author = author, cardsPlayed = listOf(defuse))
+        val result = validator.validate(game, move)
+
+        assertTrue(result is ValidationResult.Rejected)
     }
 }

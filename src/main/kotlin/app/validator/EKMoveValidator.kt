@@ -1,6 +1,7 @@
 package app.validator
 
 import app.dto.ValidationResult
+import domain.CardType
 import domain.Game
 import domain.GameState
 import domain.Move
@@ -76,7 +77,54 @@ class EKMoveValidator : IMoveValidator {
     }
 
     private fun validatePlayCard(game: Game, move: Move): ValidationResult {
-        // TODO: реализовать в будущем
+        val author = move.author
+            ?: return ValidationResult.Rejected(listOf("author is required"))
+
+        if (move.cardsPlayed.size != 1) {
+            return ValidationResult.Rejected(listOf("PLAY_CARD must contain exactly one card"))
+        }
+
+        val card = move.cardsPlayed.first()
+
+        if (!author.hand.contains(card)) {
+            return ValidationResult.Rejected(listOf("card is not in author's hand"))
+        }
+
+        if (card.isExplodingKitten) {
+            return ValidationResult.Rejected(listOf("exploding kitten cannot be played"))
+        }
+
+        if (card.type.isCatCard) {
+            return ValidationResult.Rejected(listOf("cat cards cannot be played alone"))
+        }
+
+        return when (card.type) {
+            CardType.ATTACK -> validateAttack(game, move)
+            CardType.SKIP -> ValidationResult.Accepted(move)
+            CardType.SHUFFLE -> ValidationResult.Accepted(move)
+            CardType.SEE_FUTURE -> ValidationResult.Accepted(move)
+            CardType.DEFUSE -> ValidationResult.Rejected(listOf("DEFUSE handling is not implemented yet"))
+            CardType.FAVOR -> ValidationResult.Rejected(listOf("FAVOR handling is not implemented yet"))
+            CardType.NOPE -> ValidationResult.Rejected(listOf("NOPE handling is not implemented yet"))
+            CardType.EXPLODING_KITTEN -> ValidationResult.Rejected(listOf("exploding kitten cannot be played"))
+            CardType.CAT_BEARD,
+            CardType.CAT_TACO,
+            CardType.CAT_HAIRY_POTATO,
+            CardType.CAT_CATERMELON,
+            CardType.CAT_RAINBOW_RALPHING ->
+                ValidationResult.Rejected(listOf("cat cards cannot be played alone"))
+        }
+    }
+
+    /*
+    ATTACK требует наличия хотя бы одного живого игрока после автора.
+    Иначе эффект карты некуда применить.
+    */
+    private fun validateAttack(game: Game, move: Move): ValidationResult {
+        val aliveOthers = game.getAlivePlayers().filter { it.id != move.author?.id }
+        if (aliveOthers.isEmpty()) {
+            return ValidationResult.Rejected(listOf("no alive players to attack"))
+        }
         return ValidationResult.Accepted(move)
     }
 
