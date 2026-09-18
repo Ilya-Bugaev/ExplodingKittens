@@ -68,8 +68,30 @@ class Game(val id: Int) {
         insertKittensIntoDeck(playerNames.size)
         deck.shuffle(random)
 
+        recordStartSnapshot()
+
         state = GameState.IN_PROGRESS
         currentTurnIndex = 0
+    }
+
+    /*
+    Записывает START с снапшотом начального состояния партии.
+    Вызывается из startGame после раздачи и перемешивания.
+    Служит опорной точкой для ReplaySystem: чтобы восстановить партию,
+    нужно знать, с чего она начиналась.
+    */
+    private fun recordStartSnapshot() {
+        val initialHands = _players.associate { it.id to it.hand }
+        val initialDeckOrder = deck.peekTop(deck.size())
+        addMove(
+            Move(
+                id = 0,
+                turnNumber = 0,
+                type = MoveType.START,
+                initialHands = initialHands,
+                initialDeckOrder = initialDeckOrder
+            )
+        )
     }
 
     fun getCurrentPlayer(): Player = _players[currentTurnIndex]
