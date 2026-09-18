@@ -191,16 +191,18 @@ class GameTest {
         }
     }
 
-    // addMove присваивает уникальные последовательные id и сохраняет порядок.
+    // addMove присваивает последовательные id, продолжая уже существующую историю.
     @Test
     fun `addMove assigns sequential ids`() {
         val game = newGame("Аня", "Боря")
-        val m1 = game.addMove(Move(0, 0, MoveType.START))
-        val m2 = game.addMove(Move(0, 1, MoveType.DRAW, author = game.players[0]))
+        val movesBefore = game.moves.size
 
-        assertEquals(1, m1.id)
-        assertEquals(2, m2.id)
-        assertEquals(2, game.moves.size)
+        val m1 = game.addMove(Move(0, 1, MoveType.DRAW, author = game.players[0]))
+        val m2 = game.addMove(Move(0, 2, MoveType.PLAY_CARD, author = game.players[1]))
+
+        assertEquals(movesBefore + 1, m1.id)
+        assertEquals(movesBefore + 2, m2.id)
+        assertEquals(movesBefore + 2, game.moves.size)
     }
 
     // Новый Game без startGame: state = SETUP, игроков нет, winner = null.
@@ -210,5 +212,14 @@ class GameTest {
         assertEquals(GameState.SETUP, game.state)
         assertTrue(game.players.isEmpty())
         assertNull(game.winner)
+    }
+    // После старта в истории ровно один Move — START.
+    @Test
+    fun `startGame records a single START move`() {
+        val game = newGame("Аня", "Боря")
+
+        assertEquals(1, game.moves.size)
+        assertEquals(MoveType.START, game.moves[0].type)
+        assertNull(game.moves[0].author)
     }
 }
