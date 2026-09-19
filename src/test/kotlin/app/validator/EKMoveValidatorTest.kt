@@ -3,10 +3,12 @@ package app.validator
 import app.dto.ValidationResult
 import domain.Card
 import domain.CardType
+import domain.CardType.FAVOR
 import domain.Game
 import domain.Move
 import domain.MoveType
 import domain.Player
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import kotlin.collections.get
@@ -148,7 +150,7 @@ class EKMoveValidatorTest {
         val author = game.players[0]
 
         // Опустошаем колоду вручную
-        repeat(game.deck.size()) { game.deck.draw() }
+        repeat(game.deck.size) { game.deck.draw() }
 
         val move = Move(0, 1, MoveType.DRAW, author = author)
         val result = validator.validate(game, move)
@@ -270,16 +272,152 @@ class EKMoveValidatorTest {
         assertTrue(result is ValidationResult.Accepted)
     }
 
-    // PLAY_CARD: DEFUSE пока отклоняется как нереализованный.
+    // DEFUSE без ожидающего котёнка — отклоняется.
     @Test
-    fun `PLAY_CARD DEFUSE is rejected as not implemented`() {
+    fun `DEFUSE without pending kitten is rejected`() {
         val game = startedGame("Аня", "Боря")
         val author = game.players[0]
         val defuse = author.findCardsOfType(CardType.DEFUSE).first()
 
-        val move = Move(0, 1, MoveType.PLAY_CARD, author = author, cardsPlayed = listOf(defuse))
+        val move = Move(
+            0, 1, MoveType.PLAY_CARD,
+            author = author,
+            cardsPlayed = listOf(defuse),
+            placedKittenPosition = 5
+        )
         val result = validator.validate(game, move)
 
         assertTrue(result is ValidationResult.Rejected)
+    }
+
+    // DEFUSE с ожидающим котёнком, но без позиции — отклоняется.
+    @Test
+    fun `DEFUSE without position is rejected`() {
+        val game = startedGame("Аня", "Боря")
+        val author = game.players[0]
+        val defuse = author.findCardsOfType(CardType.DEFUSE).first()
+        game.setPendingKitten(Card(9999, CardType.EXPLODING_KITTEN))
+
+        val move = Move(
+            0, 1, MoveType.PLAY_CARD,
+            author = author,
+            cardsPlayed = listOf(defuse)
+        )
+        val result = validator.validate(game, move)
+
+        assertTrue(result is ValidationResult.Rejected)
+    }
+
+    // DEFUSE с котёнком и корректной позицией — принимается.
+    @Test
+    fun `DEFUSE with pending kitten and position is accepted`() {
+        val game = startedGame("Аня", "Боря")
+        val author = game.players[0]
+        val defuse = author.findCardsOfType(CardType.DEFUSE).first()
+        game.setPendingKitten(Card(9999, CardType.EXPLODING_KITTEN))
+
+        val move = Move(
+            0, 1, MoveType.PLAY_CARD,
+            author = author,
+            cardsPlayed = listOf(defuse),
+            placedKittenPosition = 5
+        )
+        val result = validator.validate(game, move)
+
+        assertTrue(result is ValidationResult.Accepted)
+    }
+
+    // DEFUSE с позицией за пределами колоды — отклоняется.
+    @Test
+    fun `DEFUSE with out-of-bounds position is rejected`() {
+        val game = startedGame("Аня", "Боря")
+        val author = game.players[0]
+        val defuse = author.findCardsOfType(CardType.DEFUSE).first()
+        game.setPendingKitten(Card(9999, CardType.EXPLODING_KITTEN))
+
+        val move = Move(
+            0, 1, MoveType.PLAY_CARD,
+            author = author,
+            cardsPlayed = listOf(defuse),
+            placedKittenPosition = game.deck.size + 100
+        )
+        val result = validator.validate(game, move)
+
+        assertTrue(result is ValidationResult.Rejected)
+    }
+
+    // FAVOR без цели — отклоняется.
+    @Test
+    fun `FAVOR without target is rejected`() {
+        val game = startedGame("Аня", "Боря")
+        val author = game.players[0]
+        val favor = Card(9999, CardType.FAVOR)
+        author.addCard(favor)
+
+        val move = Move(0, 1, MoveType.PLAY_CARD, author = author, cardsPlayed = listOf(favor))
+        val result = validator.validate(game, move)
+
+        assertTrue(result is ValidationResult.Rejected)
+    }
+
+    // FAVOR с целью-автором — отклоняется.
+    @Test
+    fun `FAVOR targeting self is rejected`() {
+        val game = startedGame("Аня", "Боря")
+        val author = game.players[0]
+        val favor = Card(9999, FAVOR)
+        author.addCard(favor)
+
+        val move = Move(
+            0, 1, MoveType.PLAY_CARD,
+            author = author,
+            cardsPlayed = listOf(favor),
+            target = author
+        )
+        val result = validator.validate(game, move)
+
+        assertTrue(result is ValidationResult.Rejected)
+    }
+
+    // FAVOR с выбывшей целью — отклоняется.
+    @Test
+    fun `FAVOR targeting eliminated player is rejected`() {
+        val game = startedGame("Аня", "Боря", "Ваня")
+        val author = game.players[0]
+        val target = game.players[1]
+        target.eliminate()
+        val favor = Card(9999, FAVOR)
+        author.addCard(favor)
+
+        val move = Move(
+            0, 1, MoveType.PLAY_CARD,
+            author = author,
+            cardsPlayed = listOf(favor),
+            target = target
+        )
+        val result = validator.validate(game, move)
+
+        assertTrue(result is ValidationResult.Rejected)
+    }
+
+    // FAVOR с живой целью — возвращает AwaitingResponse с responderId = target.id.
+    @Test
+    fun `FAVOR targeting alive opponent returns AwaitingResponse`() {
+        val game = startedGame("Аня", "Боря")
+        val author = game.players[0]
+        val target = game.players[1]
+        val favor = Card(9999, FAVOR)
+        author.addCard(favor)
+
+        val move = Move(
+            0, 1, MoveType.PLAY_CARD,
+            author = author,
+            cardsPlayed = listOf(favor),
+            target = target
+        )
+        val result = validator.validate(game, move)
+
+        assertTrue(result is ValidationResult.AwaitingResponse)
+        assertEquals(target.id, (result as ValidationResult.AwaitingResponse).responderId)
     }
 }

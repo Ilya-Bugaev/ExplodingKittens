@@ -13,7 +13,7 @@ class Deck(initialCards: List<Card> = emptyList()) {
 
     private val cards: MutableList<Card> = initialCards.toMutableList()
 
-    fun size(): Int = cards.size
+    val size: Int get() = cards.size
 
     fun isEmpty(): Boolean = cards.isEmpty()
 

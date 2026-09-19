@@ -17,13 +17,13 @@ class DeckTest {
     fun `new deck with no cards is empty`() {
         val deck = Deck()
         assertTrue(deck.isEmpty())
-        assertEquals(0, deck.size())
+        assertEquals(0, deck.size)
     }
 
     @Test
     fun `new deck from list reports correct size`() {
         val deck = Deck(listOf(card(1), card(2), card(3)))
-        assertEquals(3, deck.size())
+        assertEquals(3, deck.size)
         assertFalse(deck.isEmpty())
     }
 
@@ -44,7 +44,7 @@ class DeckTest {
 
         deck.draw()
 
-        assertEquals(2, deck.size())
+        assertEquals(2, deck.size)
         assertEquals(listOf(2, 3), deck.peekTop(2).map { it.id })
     }
 
@@ -75,7 +75,7 @@ class DeckTest {
         val peeked = deck.peekTop(3)
 
         assertEquals(listOf(1, 2, 3), peeked.map { it.id })
-        assertEquals(4, deck.size())
+        assertEquals(4, deck.size)
     }
 
     @Test

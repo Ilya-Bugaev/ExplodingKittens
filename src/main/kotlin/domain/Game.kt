@@ -43,6 +43,14 @@ class Game(val id: Int) {
     var discardPile: DiscardPile = DiscardPile()
         private set
 
+    /*
+    Котёнок, которого текущий игрок только что вытянул и должен
+    обезвредить (сыграть DEFUSE) или признать выбывание.
+    Пока поле не null, партия «ждёт» решения текущего игрока.
+    */
+    var pendingKitten: Card? = null
+        private set
+
     private var nextCardId: Int = 0
 
     /*
@@ -82,7 +90,7 @@ class Game(val id: Int) {
     */
     private fun recordStartSnapshot() {
         val initialHands = _players.associate { it.id to it.hand }
-        val initialDeckOrder = deck.peekTop(deck.size())
+        val initialDeckOrder = deck.peekTop(deck.size)
         addMove(
             Move(
                 id = 0,
@@ -151,6 +159,22 @@ class Game(val id: Int) {
     }
 
     /*
+    Устанавливает котёнка, ожидающего обезвреживания. Вызывается
+    сервисом после того, как игрок вытянул Exploding Kitten.
+    */
+    fun setPendingKitten(card: Card) {
+        pendingKitten = card
+    }
+
+    /*
+    Сбрасывает ожидание обезвреживания. Вызывается после успешного
+    розыгрыша DEFUSE или после выбывания игрока.
+    */
+    fun clearPendingKitten() {
+        pendingKitten = null
+    }
+
+    /*
     Собирает стартовую колоду без Exploding Kittens. Котята добавляются
     отдельным методом после раздачи. Итого 52 карты:
     6 Defuse, 5 Nope, 4 Attack, 4 Skip, 4 Favor, 4 Shuffle,
@@ -210,7 +234,7 @@ class Game(val id: Int) {
         val kittens = (1..playerCount - 1).map {
             Card(id = nextCardId++, type = CardType.EXPLODING_KITTEN)
         }
-        val currentCards = deck.peekTop(deck.size())
+        val currentCards = deck.peekTop(deck.size)
         deck = Deck(currentCards + kittens)
     }
 
@@ -219,7 +243,7 @@ class Game(val id: Int) {
     Возвращает null, если карты нет. Используется при раздаче Defuse.
     */
     private fun removeOneCardOfTypeFromDeck(type: CardType): Card? {
-        val all = deck.peekTop(deck.size()).toMutableList()
+        val all = deck.peekTop(deck.size).toMutableList()
         val index = all.indexOfFirst { it.type == type }
         if (index < 0) return null
 

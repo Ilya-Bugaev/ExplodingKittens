@@ -61,7 +61,7 @@ class GameTest {
     @Test
     fun `deck contains correct number of exploding kittens`() {
         val game = newGame("Аня", "Боря", "Ваня")
-        val kittens = game.deck.peekTop(game.deck.size())
+        val kittens = game.deck.peekTop(game.deck.size)
             .count { it.type == CardType.EXPLODING_KITTEN }
         assertEquals(2, kittens)
     }

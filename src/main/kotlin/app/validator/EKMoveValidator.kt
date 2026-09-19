@@ -103,8 +103,8 @@ class EKMoveValidator : IMoveValidator {
             CardType.SKIP -> ValidationResult.Accepted(move)
             CardType.SHUFFLE -> ValidationResult.Accepted(move)
             CardType.SEE_FUTURE -> ValidationResult.Accepted(move)
-            CardType.DEFUSE -> ValidationResult.Rejected(listOf("DEFUSE handling is not implemented yet"))
-            CardType.FAVOR -> ValidationResult.Rejected(listOf("FAVOR handling is not implemented yet"))
+            CardType.DEFUSE -> validateDefuse(game, move)
+            CardType.FAVOR -> validateFavor(game, move)
             CardType.NOPE -> ValidationResult.Rejected(listOf("NOPE handling is not implemented yet"))
             CardType.EXPLODING_KITTEN -> ValidationResult.Rejected(listOf("exploding kitten cannot be played"))
             CardType.CAT_BEARD,
@@ -126,6 +126,52 @@ class EKMoveValidator : IMoveValidator {
             return ValidationResult.Rejected(listOf("no alive players to attack"))
         }
         return ValidationResult.Accepted(move)
+    }
+
+    /*
+DEFUSE играется только тогда, когда игрок вытянул Exploding Kitten.
+Проверяет, что партия находится в состоянии ожидания обезвреживания,
+и что указана корректная позиция для возврата котёнка в колоду.
+*/
+    private fun validateDefuse(game: Game, move: Move): ValidationResult {
+        if (game.pendingKitten == null) {
+            return ValidationResult.Rejected(
+                listOf("DEFUSE can only be played when an exploding kitten is pending")
+            )
+        }
+
+        val position = move.placedKittenPosition
+            ?: return ValidationResult.Rejected(
+                listOf("DEFUSE must specify placedKittenPosition")
+            )
+
+        if (position !in 0..game.deck.size) {
+            return ValidationResult.Rejected(
+                listOf("placedKittenPosition must be in 0..${game.deck.size}, was $position")
+            )
+        }
+
+        return ValidationResult.Accepted(move)
+    }
+
+    /*
+    FAVOR требует указать другого живого игрока. После розыгрыша
+    партия ждёт ответа цели — какой картой она поделится.
+    Валидатор возвращает AwaitingResponse с идентификатором цели.
+    */
+    private fun validateFavor(game: Game, move: Move): ValidationResult {
+        val target = move.target
+            ?: return ValidationResult.Rejected(listOf("FAVOR requires a target player"))
+
+        if (target.id == move.author?.id) {
+            return ValidationResult.Rejected(listOf("FAVOR target must be another player"))
+        }
+
+        if (!target.isAlive) {
+            return ValidationResult.Rejected(listOf("FAVOR target is eliminated"))
+        }
+
+        return ValidationResult.AwaitingResponse(move, responderId = target.id)
     }
 
     private fun validateTwoOfAKind(game: Game, move: Move): ValidationResult {
