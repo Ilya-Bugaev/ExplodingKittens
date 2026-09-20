@@ -51,6 +51,15 @@ class Game(val id: Int) {
     var pendingKitten: Card? = null
         private set
 
+    /*
+    Ход, ожидающий разрешения по цепочке Nope. Пока поле не null,
+    окно Nope открыто, и любой живой игрок может сыграть NOPE.
+    Устанавливается сервисом после розыгрыша карты, которую можно
+    отменить. Сбрасывается после закрытия окна.
+    */
+    var pendingMove: Move? = null
+        private set
+
     private var nextCardId: Int = 0
 
     /*
@@ -172,6 +181,21 @@ class Game(val id: Int) {
     */
     fun clearPendingKitten() {
         pendingKitten = null
+    }
+
+    /*
+    Устанавливает ход, ожидающий разрешения Nope.
+    */
+    fun setPendingMove(move: Move) {
+        pendingMove = move
+    }
+
+    /*
+    Сбрасывает ожидание разрешения Nope. Вызывается после закрытия
+    окна — когда цепочка Nope разрешена.
+    */
+    fun clearPendingMove() {
+        pendingMove = null
     }
 
     /*
