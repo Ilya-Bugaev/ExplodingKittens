@@ -47,7 +47,7 @@ class EKMoveValidator : IMoveValidator {
         if (!author.isAlive) {
             return ValidationResult.Rejected(listOf("author is eliminated"))
         }
-        if (author.id != game.getCurrentPlayer().id) {
+        if (!isNopePlay(move) && author.id != game.getCurrentPlayer().id) {
             return ValidationResult.Rejected(listOf("not author's turn"))
         }
         return null
@@ -105,7 +105,7 @@ class EKMoveValidator : IMoveValidator {
             CardType.SEE_FUTURE -> ValidationResult.Accepted(move)
             CardType.DEFUSE -> validateDefuse(game, move)
             CardType.FAVOR -> validateFavor(game, move)
-            CardType.NOPE -> ValidationResult.Rejected(listOf("NOPE handling is not implemented yet"))
+            CardType.NOPE -> validateNope(game, move)
             CardType.EXPLODING_KITTEN -> ValidationResult.Rejected(listOf("exploding kitten cannot be played"))
             CardType.CAT_BEARD,
             CardType.CAT_TACO,
@@ -174,6 +174,22 @@ DEFUSE играется только тогда, когда игрок вытя�
         return ValidationResult.AwaitingResponse(move, responderId = target.id)
     }
 
+    private fun validateNope(game: Game, move: Move): ValidationResult {
+        val pending = game.pendingMove
+            ?: return ValidationResult.Rejected(listOf("NOPE can only be played when an action is pending"))
+
+        if (pending.type == MoveType.START || pending.type == MoveType.DRAW) {
+            return ValidationResult.Rejected(listOf("NOPE cannot cancel ${pending.type}"))
+        }
+
+        val canceledCard = pending.cardsPlayed.singleOrNull()
+        if (canceledCard?.type == CardType.DEFUSE) {
+            return ValidationResult.Rejected(listOf("NOPE cannot cancel DEFUSE"))
+        }
+
+        return ValidationResult.Accepted(move)
+    }
+
     private fun validateTwoOfAKind(game: Game, move: Move): ValidationResult {
         // TODO: реализовать в будущем
         return ValidationResult.Accepted(move)
@@ -193,4 +209,8 @@ DEFUSE играется только тогда, когда игрок вытя�
         // TODO: реализовать в будущем
         return ValidationResult.Accepted(move)
     }
+
+    private fun isNopePlay(move: Move): Boolean =
+        move.type == MoveType.PLAY_CARD &&
+                move.cardsPlayed.singleOrNull()?.type == CardType.NOPE
 }

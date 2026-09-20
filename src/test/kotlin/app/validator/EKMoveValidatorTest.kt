@@ -420,4 +420,116 @@ class EKMoveValidatorTest {
         assertTrue(result is ValidationResult.AwaitingResponse)
         assertEquals(target.id, (result as ValidationResult.AwaitingResponse).responderId)
     }
+
+    // NOPE без активного окна — отклоняется.
+    @Test
+    fun `NOPE without pending move is rejected`() {
+        val game = startedGame("Аня", "Боря")
+        val author = game.players[0]
+        val nope = Card(9999, CardType.NOPE)
+        author.addCard(nope)
+
+        val move = Move(0, 1, MoveType.PLAY_CARD, author = author, cardsPlayed = listOf(nope))
+        val result = validator.validate(game, move)
+
+        assertTrue(result is ValidationResult.Rejected)
+    }
+
+    // NOPE на DRAW — отклоняется (DRAW не отменяется).
+    @Test
+    fun `NOPE on DRAW is rejected`() {
+        val game = startedGame("Аня", "Боря")
+        val author = game.players[0]
+        val nope = Card(9999, CardType.NOPE)
+        author.addCard(nope)
+
+        val drawMove = Move(1, 1, MoveType.DRAW, author = author)
+        game.setPendingMove(drawMove)
+
+        val move = Move(0, 2, MoveType.PLAY_CARD, author = author, cardsPlayed = listOf(nope))
+        val result = validator.validate(game, move)
+
+        assertTrue(result is ValidationResult.Rejected)
+    }
+
+    // NOPE на DEFUSE — отклоняется (DEFUSE не отменяется).
+    @Test
+    fun `NOPE on DEFUSE is rejected`() {
+        val game = startedGame("Аня", "Боря")
+        val author = game.players[0]
+        val nope = Card(9999, CardType.NOPE)
+        author.addCard(nope)
+        val defuse = Card(8888, CardType.DEFUSE)
+
+        val defuseMove = Move(1, 1, MoveType.PLAY_CARD, author = author, cardsPlayed = listOf(defuse))
+        game.setPendingMove(defuseMove)
+
+        val move = Move(0, 2, MoveType.PLAY_CARD, author = author, cardsPlayed = listOf(nope))
+        val result = validator.validate(game, move)
+
+        assertTrue(result is ValidationResult.Rejected)
+    }
+
+    // NOPE на PLAY_CARD текущего игрока — принимается.
+    @Test
+    fun `NOPE on PLAY_CARD is accepted`() {
+        val game = startedGame("Аня", "Боря")
+        val author = game.players[0]
+        val nope = Card(9999, CardType.NOPE)
+        author.addCard(nope)
+
+        val skipMove = Move(
+            1, 1, MoveType.PLAY_CARD,
+            author = author,
+            cardsPlayed = listOf(Card(8888, CardType.SKIP))
+        )
+        game.setPendingMove(skipMove)
+
+        val move = Move(0, 2, MoveType.PLAY_CARD, author = author, cardsPlayed = listOf(nope))
+        val result = validator.validate(game, move)
+
+        assertTrue(result is ValidationResult.Accepted)
+    }
+
+    // NOPE может играть НЕ текущий игрок — это ключевое отличие от всех остальных ходов.
+    @Test
+    fun `NOPE can be played by non-current player`() {
+        val game = startedGame("Аня", "Боря")
+        val notCurrent = game.players[1]  // сейчас ход Ани
+        val nope = Card(9999, CardType.NOPE)
+        notCurrent.addCard(nope)
+
+        val skipMove = Move(
+            1, 1, MoveType.PLAY_CARD,
+            author = game.players[0],
+            cardsPlayed = listOf(Card(8888, CardType.SKIP))
+        )
+        game.setPendingMove(skipMove)
+
+        val move = Move(0, 2, MoveType.PLAY_CARD, author = notCurrent, cardsPlayed = listOf(nope))
+        val result = validator.validate(game, move)
+
+        assertTrue(result is ValidationResult.Accepted)
+    }
+
+    // NOPE на NOPE — принимается (Nope можно отменить Nope-ом).
+    @Test
+    fun `NOPE on NOPE is accepted`() {
+        val game = startedGame("Аня", "Боря")
+        val author = game.players[0]
+        val nope = Card(9999, CardType.NOPE)
+        author.addCard(nope)
+
+        val previousNope = Move(
+            1, 1, MoveType.PLAY_CARD,
+            author = game.players[1],
+            cardsPlayed = listOf(Card(8888, CardType.NOPE))
+        )
+        game.setPendingMove(previousNope)
+
+        val move = Move(0, 2, MoveType.PLAY_CARD, author = author, cardsPlayed = listOf(nope))
+        val result = validator.validate(game, move)
+
+        assertTrue(result is ValidationResult.Accepted)
+    }
 }
