@@ -18,3 +18,17 @@ data class Move(
     val initialHands: Map<Int, List<Card>>? = null,
     val initialDeckOrder: List<Card>? = null
 )
+
+/*
+Завершает ли данный ход очередь текущего игрока.
+Ход завершается после DRAW, а также после PLAY_CARD с картами SKIP или ATTACK.
+Остальные ходы (SHUFFLE, SEE_FUTURE, FAVOR, комбинации, NOPE, DEFUSE)
+оставляют очередь за текущим игроком.
+*/
+val Move.endsTurn: Boolean
+    get() = when (type) {
+        MoveType.DRAW -> true
+        MoveType.PLAY_CARD ->
+            cardsPlayed.singleOrNull()?.type in setOf(CardType.SKIP, CardType.ATTACK)
+        else -> false
+    }

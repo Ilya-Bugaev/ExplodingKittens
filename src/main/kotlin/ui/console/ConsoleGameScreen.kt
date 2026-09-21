@@ -8,6 +8,7 @@ import domain.Game
 import domain.GameState
 import domain.Move
 import domain.MoveType
+import domain.endsTurn
 
 /*
 Консольный экран для ведения партии.
@@ -132,7 +133,7 @@ class ConsoleGameScreen(
 
         printLine("Ваша рука (${current.name}):")
         current.hand.forEachIndexed { index, card ->
-            printLine("  ${index + 1}. ${card.type} (id=${card.id})")
+            printLine("  ${index + 1}. ${card.type.displayName} (id=${card.id})")
         }
 
         val index = readInt("Номер карты (0 - отмена)")
@@ -229,22 +230,28 @@ class ConsoleGameScreen(
     }
 
     private fun handleAccepted(game: Game) {
-        printLine("✓ Ход принят.")
+        printLine("Ход принят.")
 
         if (game.isFinished() || game.state == GameState.FINISHED) {
-            printLine("🏆 Партия завершена! Победитель: ${game.winner?.name ?: "-"}")
+            printLine("Партия завершена! Победитель: ${game.winner?.name ?: "—"}")
             activeGameId = null
             return
         }
 
-        // Если сейчас у игрока висит котёнок - сообщаем и не переключаем
         if (game.pendingKitten != null) {
-            printLine("⚠ Вытянут взрывной котёнок. Сыграйте DEFUSE (пункт 5).")
+            printLine("Вытянут взрывной котёнок. Сыграйте DEFUSE (пункт 5).")
             return
         }
 
-        val currentName = game.getCurrentPlayer().name
-        printLine("Ход продолжается: $currentName может сыграть ещё карту или взять карту (пункт 4).")
+        val lastMove = game.moves.lastOrNull()
+        if (lastMove != null && lastMove.endsTurn) {
+            printLine("Ход перешёл к: ${game.getCurrentPlayer().name}")
+        } else {
+            printLine(
+                "Ход продолжается: ${game.getCurrentPlayer().name} " +
+                        "может сыграть ещё карту или взять карту (пункт 4)."
+            )
+        }
     }
 
     /*
@@ -280,7 +287,7 @@ class ConsoleGameScreen(
         )
         handleResult(gameplay.playMove(game.id, nopeMove), game)
     }
-    
+
     private fun handleAwaitingResponse(game: Game, responderId: Int) {
         val responder = game.players.firstOrNull { it.id == responderId }
         printLine("Ход ждёт ответа от ${responder?.name ?: "игрока $responderId"}.")

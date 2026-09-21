@@ -6,11 +6,13 @@ import domain.CardType
 import domain.Game
 import domain.Move
 import domain.MoveType
+import domain.endsTurn
 import kotlin.random.Random
 
 /*
 Оркестратор партий. Хранит активные игры в памяти, валидирует ходы
-и применяет их эффекты
+и применяет их эффекты. На шаге 2 - только in-memory; на шаге 4
+добавится сохранение через IHistoryRepository.
 */
 class GameplayService(
     private val validator: IMoveValidator,
@@ -55,7 +57,7 @@ class GameplayService(
                 game.addMove(result.move)
                 if (game.isFinished()) {
                     game.finish()
-                } else if (shouldEndTurn(result.move)) {
+                } else if (result.move.endsTurn) {
                     game.advanceTurn(forAttack = isAttackMove(result.move))
                 }
                 result
@@ -74,8 +76,12 @@ class GameplayService(
     }
 
     /*
-    Закрывает окно Nope. Если pendingMove - это Nope, действие
-    отменяется. Иначе - эффект применяется.
+    Закрывает окно Nope. Если последний pendingMove - это NOPE,
+    действие отменяется. Иначе - эффект применяется.
+
+    Факт прихода NOPE обрабатывается playMove ДО вызова этого метода.
+    Здесь только разрешение цепочки: если последний ход в pendingMove
+    это NOPE, значит отменяем; иначе применяем.
     */
     fun resolveNopeWindow(gameId: Int): ValidationResult {
         val game = games[gameId]
@@ -95,7 +101,7 @@ class GameplayService(
         game.addMove(pending)
         if (game.isFinished()) {
             game.finish()
-        } else if (shouldEndTurn(pending)) {
+        } else if (pending.endsTurn) {
             game.advanceTurn(forAttack = isAttackMove(pending))
         }
         return ValidationResult.Accepted(pending)
@@ -111,6 +117,15 @@ class GameplayService(
     fun getCurrentGame(gameId: Int): Game? = games[gameId]
 
     fun getActiveGameIds(): Set<Int> = games.keys.toSet()
+
+    /*
+    Определяет, является ли ход розыгрышем карты ATTACK. Используется
+    для передачи флага forAttack в advanceTurn - следующий игрок
+    получит 2 хода.
+    */
+    private fun isAttackMove(move: Move): Boolean =
+        move.type == MoveType.PLAY_CARD &&
+                move.cardsPlayed.singleOrNull()?.type == CardType.ATTACK
 
     /*
     Применяет эффект хода к партии. Для START - no-op.
@@ -150,9 +165,7 @@ class GameplayService(
                 game.deck.shuffle()
             }
             CardType.SEE_FUTURE -> game.discardPile.add(card)
-            CardType.ATTACK -> {
-                game.discardPile.add(card)
-            }
+            CardType.ATTACK -> game.discardPile.add(card)
             CardType.DEFUSE -> {
                 game.discardPile.add(card)
                 val kitten = game.pendingKitten
@@ -162,9 +175,7 @@ class GameplayService(
                     game.clearPendingKitten()
                 }
             }
-            CardType.NOPE -> {
-                game.discardPile.add(card)
-            }
+            CardType.NOPE -> game.discardPile.add(card)
             CardType.FAVOR -> game.discardPile.add(card)
             else -> game.discardPile.add(card)
         }
@@ -198,20 +209,4 @@ class GameplayService(
         val taken = game.discardPile.takeAnyCard() ?: return
         author.addCard(taken)
     }
-
-    /*
-    Определяет, завершает ли ход данный Move.
-    Ход завершается после DRAW, а также после PLAY_CARD с картами
-    SKIP или ATTACK. Все остальные ходы оставляют ход у текущего игрока.
-    */
-    private fun shouldEndTurn(move: Move): Boolean {
-        if (move.type == MoveType.DRAW) return true
-        if (move.type != MoveType.PLAY_CARD) return false
-        val card = move.cardsPlayed.singleOrNull() ?: return false
-        return card.type == CardType.SKIP || card.type == CardType.ATTACK
-    }
-
-    private fun isAttackMove(move: Move): Boolean =
-        move.type == MoveType.PLAY_CARD &&
-                move.cardsPlayed.singleOrNull()?.type == CardType.ATTACK
 }
