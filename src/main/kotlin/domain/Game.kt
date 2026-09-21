@@ -275,4 +275,25 @@ class Game(val id: Int) {
         deck = Deck(all)
         return removed
     }
+
+    /*
+Возвращает снимок начального расклада для синхронизации физического стола:
+руки всех игроков и порядок карт в колоде.
+Вызывается после startGame, чтобы ведущий разложил карты за столом.
+*/
+    fun getInitialSetup(): String {
+        val startMove = moves.firstOrNull { it.type == MoveType.START }
+            ?: return "Партия ещё не начата"
+        val sb = StringBuilder()
+        sb.appendLine("Разложите карты за столом:")
+        startMove.initialHands?.forEach { (playerId, cards) ->
+            val name = players.first { it.id == playerId }.name
+            sb.appendLine("  $name: ${cards.joinToString(", ") { it.type.name }}")
+        }
+        sb.appendLine("Колода сверху вниз:")
+        startMove.initialDeckOrder?.forEachIndexed { index, card ->
+            sb.appendLine("  ${index + 1}. ${card.type.name}")
+        }
+        return sb.toString()
+    }
 }
