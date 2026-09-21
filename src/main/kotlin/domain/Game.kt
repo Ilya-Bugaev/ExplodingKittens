@@ -145,17 +145,19 @@ class Game(val id: Int) {
     ход остаётся на нём, счётчик уменьшается. Иначе - переход
     к следующему живому игроку.
     */
-    fun advanceTurn() {
+    fun advanceTurn(forAttack: Boolean = false) {
         turnsPlayed++
 
         if (attacksPending > 1) {
             attacksPending--
-        } else {
-            attacksPending = 0
-            do {
-                currentTurnIndex = (currentTurnIndex + 1) % _players.size
-            } while (!_players[currentTurnIndex].isAlive)
+            return
         }
+
+        do {
+            currentTurnIndex = (currentTurnIndex + 1) % _players.size
+        } while (!_players[currentTurnIndex].isAlive)
+
+        attacksPending = if (forAttack) 2 else 0
     }
 
     /*

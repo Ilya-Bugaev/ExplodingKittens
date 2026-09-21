@@ -56,7 +56,7 @@ class GameplayService(
                 if (game.isFinished()) {
                     game.finish()
                 } else if (shouldEndTurn(result.move)) {
-                    game.advanceTurn()
+                    game.advanceTurn(forAttack = isAttackMove(result.move))
                 }
                 result
             }
@@ -96,7 +96,7 @@ class GameplayService(
         if (game.isFinished()) {
             game.finish()
         } else if (shouldEndTurn(pending)) {
-            game.advanceTurn()
+            game.advanceTurn(forAttack = isAttackMove(pending))
         }
         return ValidationResult.Accepted(pending)
     }
@@ -152,7 +152,6 @@ class GameplayService(
             CardType.SEE_FUTURE -> game.discardPile.add(card)
             CardType.ATTACK -> {
                 game.discardPile.add(card)
-                game.setAttacksPending(2)
             }
             CardType.DEFUSE -> {
                 game.discardPile.add(card)
@@ -211,4 +210,8 @@ class GameplayService(
         val card = move.cardsPlayed.singleOrNull() ?: return false
         return card.type == CardType.SKIP || card.type == CardType.ATTACK
     }
+
+    private fun isAttackMove(move: Move): Boolean =
+        move.type == MoveType.PLAY_CARD &&
+                move.cardsPlayed.singleOrNull()?.type == CardType.ATTACK
 }
