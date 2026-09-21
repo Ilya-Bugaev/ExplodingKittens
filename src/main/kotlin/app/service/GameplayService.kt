@@ -55,7 +55,7 @@ class GameplayService(
                 game.addMove(result.move)
                 if (game.isFinished()) {
                     game.finish()
-                } else {
+                } else if (shouldEndTurn(result.move)) {
                     game.advanceTurn()
                 }
                 result
@@ -95,7 +95,7 @@ class GameplayService(
         game.addMove(pending)
         if (game.isFinished()) {
             game.finish()
-        } else {
+        } else if (shouldEndTurn(pending)) {
             game.advanceTurn()
         }
         return ValidationResult.Accepted(pending)
@@ -198,5 +198,17 @@ class GameplayService(
 
         val taken = game.discardPile.takeAnyCard() ?: return
         author.addCard(taken)
+    }
+
+    /*
+    Определяет, завершает ли ход данный Move.
+    Ход завершается после DRAW, а также после PLAY_CARD с картами
+    SKIP или ATTACK. Все остальные ходы оставляют ход у текущего игрока.
+    */
+    private fun shouldEndTurn(move: Move): Boolean {
+        if (move.type == MoveType.DRAW) return true
+        if (move.type != MoveType.PLAY_CARD) return false
+        val card = move.cardsPlayed.singleOrNull() ?: return false
+        return card.type == CardType.SKIP || card.type == CardType.ATTACK
     }
 }
