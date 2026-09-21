@@ -1,22 +1,22 @@
 package domain
 
-enum class CardType {
-    EXPLODING_KITTEN,
-    DEFUSE,
-    NOPE,
-    ATTACK,
-    SKIP,
-    FAVOR,
-    SHUFFLE,
-    SEE_FUTURE,
-    CAT_BEARD,
-    CAT_TACO,
-    CAT_HAIRY_POTATO,
-    CAT_CATERMELON,
-    CAT_RAINBOW_RALPHING;
+enum class CardType(val displayName: String) {
+    EXPLODING_KITTEN("Exploding Kitten"),
+    DEFUSE("Defuse"),
+    NOPE("Nope"),
+    ATTACK("Attack"),
+    SKIP("Skip"),
+    FAVOR("Favor"),
+    SHUFFLE("Shuffle"),
+    SEE_FUTURE("See the Future"),
+    CAT_BEARD("Beard Cat"),
+    CAT_TACO("Taco Cat"),
+    CAT_HAIRY_POTATO("Hairy Potato Cat"),
+    CAT_CATERMELON("Catermelon"),
+    CAT_RAINBOW_RALPHING("Rainbow Ralphing Cat");
 
     /*
-    Кошкокарты бесполезны сами по себе — они работают только в комбинациях.
+    Кошкокарты бесполезны сами по себе - они работают только в комбинациях.
     Проверка используется в EKMoveValidator при валидации одиночного розыгрыша.
     */
     val isCatCard: Boolean

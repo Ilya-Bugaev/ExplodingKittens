@@ -290,11 +290,11 @@ class Game(val id: Int) {
         sb.appendLine("Разложите карты за столом:")
         startMove.initialHands?.forEach { (playerId, cards) ->
             val name = players.first { it.id == playerId }.name
-            sb.appendLine("  $name: ${cards.joinToString(", ") { it.type.name }}")
+            sb.appendLine("  $name: ${cards.joinToString(", ") { it.type.displayName }}")
         }
         sb.appendLine("Колода сверху вниз:")
         startMove.initialDeckOrder?.forEachIndexed { index, card ->
-            sb.appendLine("  ${index + 1}. ${card.type.name}")
+            sb.appendLine("  ${index + 1}. ${card.type.displayName}")
         }
         return sb.toString()
     }
