@@ -6,6 +6,8 @@ import domain.Game
 import domain.GameState
 import domain.Move
 import domain.MoveType
+import domain.Card
+import domain.Player
 
 class EKMoveValidator : IMoveValidator {
 
@@ -190,18 +192,88 @@ DEFUSE играется только тогда, когда игрок вытя�
         return ValidationResult.Accepted(move)
     }
 
+    /*
+    PLAY_TWO_OF_A_KIND: две одинаковые карты одного типа. Эффект - украсть случайную карту у цели.
+    */
     private fun validateTwoOfAKind(game: Game, move: Move): ValidationResult {
-        // TODO: реализовать в будущем
+        val author = move.author ?: return ValidationResult.Rejected(listOf("author is required"))
+
+        if (move.cardsPlayed.size != 2) {
+            return ValidationResult.Rejected(listOf("exactly two cards required"))
+        }
+
+        checkAllCardsInHand(author, move.cardsPlayed)?.let { return it }
+        checkSameType(move.cardsPlayed)?.let { return it }
+
+        val target = move.target
+            ?: return ValidationResult.Rejected(listOf("target player is required"))
+
+        if (target.id == author.id) {
+            return ValidationResult.Rejected(listOf("target must be another player"))
+        }
+        if (!target.isAlive) {
+            return ValidationResult.Rejected(listOf("target is eliminated"))
+        }
+        if (target.hand.isEmpty()) {
+            return ValidationResult.Rejected(listOf("target has no cards to steal"))
+        }
+
         return ValidationResult.Accepted(move)
     }
 
+    /*
+    PLAY_THREE_OF_A_KIND: три одинаковые карты, эффект - забрать
+    у цели конкретный тип карты (по названию). Если у цели такого
+    типа нет - ничего не происходит.
+    */
     private fun validateThreeOfAKind(game: Game, move: Move): ValidationResult {
-        // TODO: реализовать в будущем
+        val author = move.author ?: return ValidationResult.Rejected(listOf("author is required"))
+
+        if (move.cardsPlayed.size != 3) {
+            return ValidationResult.Rejected(listOf("exactly three cards required"))
+        }
+
+        checkAllCardsInHand(author, move.cardsPlayed)?.let { return it }
+        checkSameType(move.cardsPlayed)?.let { return it }
+
+        if (move.requestedCardType == null) {
+            return ValidationResult.Rejected(listOf("requestedCardType is required"))
+        }
+
+        val target = move.target
+            ?: return ValidationResult.Rejected(listOf("target player is required"))
+
+        if (target.id == author.id) {
+            return ValidationResult.Rejected(listOf("target must be another player"))
+        }
+        if (!target.isAlive) {
+            return ValidationResult.Rejected(listOf("target is eliminated"))
+        }
+
         return ValidationResult.Accepted(move)
     }
 
+    /*
+    PLAY_FIVE_DIFFERENT: пять карт разных типов. Эффект - взять
+    любую карту из сброса. Сброс должен быть непустым.
+    */
     private fun validateFiveDifferent(game: Game, move: Move): ValidationResult {
-        // TODO: реализовать в будущем
+        val author = move.author ?: return ValidationResult.Rejected(listOf("author is required"))
+
+        if (move.cardsPlayed.size != 5) {
+            return ValidationResult.Rejected(listOf("exactly five cards required"))
+        }
+
+        checkAllCardsInHand(author, move.cardsPlayed)?.let { return it }
+
+        if (move.cardsPlayed.map { it.type }.distinct().size != 5) {
+            return ValidationResult.Rejected(listOf("all five cards must have different types"))
+        }
+
+        if (game.discardPile.isEmpty()) {
+            return ValidationResult.Rejected(listOf("discard pile is empty"))
+        }
+
         return ValidationResult.Accepted(move)
     }
 
@@ -213,4 +285,28 @@ DEFUSE играется только тогда, когда игрок вытя�
     private fun isNopePlay(move: Move): Boolean =
         move.type == MoveType.PLAY_CARD &&
                 move.cardsPlayed.singleOrNull()?.type == CardType.NOPE
+
+    /*
+Проверяет, что все карты в списке есть в руке автора.
+Возвращает Rejected с описанием первой отсутствующей карты или null,
+если все карты на месте.
+*/
+    private fun checkAllCardsInHand(author: Player, cards: List<Card>): ValidationResult.Rejected? {
+        val handIds = author.hand.map { it.id }.toSet()
+        val missing = cards.firstOrNull { it.id !in handIds }
+        return if (missing != null) {
+            ValidationResult.Rejected(listOf("card ${missing.id} is not in author's hand"))
+        } else null
+    }
+
+    /*
+    Проверяет, что карты в списке образуют комбинацию одного типа.
+    Возвращает карты, сгруппированные по типу, или ошибку, если типы разные.
+    */
+    private fun checkSameType(cards: List<Card>): ValidationResult? {
+        if (cards.map { it.type }.distinct().size != 1) {
+            return ValidationResult.Rejected(listOf("all cards must be of the same type"))
+        }
+        return null
+    }
 }

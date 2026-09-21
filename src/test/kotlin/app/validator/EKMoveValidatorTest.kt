@@ -532,4 +532,205 @@ class EKMoveValidatorTest {
 
         assertTrue(result is ValidationResult.Accepted)
     }
+
+    // PLAY_TWO_OF_A_KIND
+
+    // Пара одинаковых карт с живой целью - принимается.
+    @Test
+    fun `two of a kind with valid target is accepted`() {
+        val game = startedGame("Аня", "Боря")
+        val author = game.players[0]
+        val target = game.players[1]
+        val c1 = Card(9001, CardType.CAT_TACO)
+        val c2 = Card(9002, CardType.CAT_TACO)
+        author.addCard(c1)
+        author.addCard(c2)
+
+        val move = Move(
+            0, 1, MoveType.PLAY_TWO_OF_A_KIND,
+            author = author, target = target, cardsPlayed = listOf(c1, c2)
+        )
+        val result = validator.validate(game, move)
+
+        assertTrue(result is ValidationResult.Accepted)
+    }
+
+    // Пара карт разного типа - отклоняется.
+    @Test
+    fun `two of a kind with different types is rejected`() {
+        val game = startedGame("Аня", "Боря")
+        val author = game.players[0]
+        val target = game.players[1]
+        val c1 = Card(9001, CardType.CAT_TACO)
+        val c2 = Card(9002, CardType.CAT_BEARD)
+        author.addCard(c1)
+        author.addCard(c2)
+
+        val move = Move(
+            0, 1, MoveType.PLAY_TWO_OF_A_KIND,
+            author = author, target = target, cardsPlayed = listOf(c1, c2)
+        )
+        val result = validator.validate(game, move)
+
+        assertTrue(result is ValidationResult.Rejected)
+    }
+
+    // Пара без цели - отклоняется.
+    @Test
+    fun `two of a kind without target is rejected`() {
+        val game = startedGame("Аня", "Боря")
+        val author = game.players[0]
+        val c1 = Card(9001, CardType.CAT_TACO)
+        val c2 = Card(9002, CardType.CAT_TACO)
+        author.addCard(c1)
+        author.addCard(c2)
+
+        val move = Move(
+            0, 1, MoveType.PLAY_TWO_OF_A_KIND,
+            author = author, cardsPlayed = listOf(c1, c2)
+        )
+        val result = validator.validate(game, move)
+
+        assertTrue(result is ValidationResult.Rejected)
+    }
+
+    // Три карты вместо двух - отклоняется.
+    @Test
+    fun `two of a kind with three cards is rejected`() {
+        val game = startedGame("Аня", "Боря")
+        val author = game.players[0]
+        val target = game.players[1]
+        val c1 = Card(9001, CardType.CAT_TACO)
+        val c2 = Card(9002, CardType.CAT_TACO)
+        val c3 = Card(9003, CardType.CAT_TACO)
+        author.addCard(c1); author.addCard(c2); author.addCard(c3)
+
+        val move = Move(
+            0, 1, MoveType.PLAY_TWO_OF_A_KIND,
+            author = author, target = target, cardsPlayed = listOf(c1, c2, c3)
+        )
+        val result = validator.validate(game, move)
+
+        assertTrue(result is ValidationResult.Rejected)
+    }
+
+// PLAY_THREE_OF_A_KIND
+
+    // Три одинаковые карты с запросом типа - принимается.
+    @Test
+    fun `three of a kind with requested type is accepted`() {
+        val game = startedGame("Аня", "Боря")
+        val author = game.players[0]
+        val target = game.players[1]
+        val cards = listOf(
+            Card(9001, CardType.CAT_TACO),
+            Card(9002, CardType.CAT_TACO),
+            Card(9003, CardType.CAT_TACO)
+        )
+        cards.forEach { author.addCard(it) }
+
+        val move = Move(
+            0, 1, MoveType.PLAY_THREE_OF_A_KIND,
+            author = author, target = target,
+            cardsPlayed = cards, requestedCardType = CardType.SKIP
+        )
+        val result = validator.validate(game, move)
+
+        assertTrue(result is ValidationResult.Accepted)
+    }
+
+    // Три одинаковые карты без requestedCardType - отклоняется.
+    @Test
+    fun `three of a kind without requested type is rejected`() {
+        val game = startedGame("Аня", "Боря")
+        val author = game.players[0]
+        val target = game.players[1]
+        val cards = listOf(
+            Card(9001, CardType.CAT_TACO),
+            Card(9002, CardType.CAT_TACO),
+            Card(9003, CardType.CAT_TACO)
+        )
+        cards.forEach { author.addCard(it) }
+
+        val move = Move(
+            0, 1, MoveType.PLAY_THREE_OF_A_KIND,
+            author = author, target = target, cardsPlayed = cards
+        )
+        val result = validator.validate(game, move)
+
+        assertTrue(result is ValidationResult.Rejected)
+    }
+
+// PLAY_FIVE_DIFFERENT
+
+    // Пять карт разных типов - принимается.
+    @Test
+    fun `five different is accepted with non-empty discard`() {
+        val game = startedGame("Аня", "Боря")
+        val author = game.players[0]
+        val cards = listOf(
+            Card(9001, CardType.CAT_TACO),
+            Card(9002, CardType.CAT_BEARD),
+            Card(9003, CardType.CAT_HAIRY_POTATO),
+            Card(9004, CardType.CAT_CATERMELON),
+            Card(9005, CardType.CAT_RAINBOW_RALPHING)
+        )
+        cards.forEach { author.addCard(it) }
+        game.discardPile.add(Card(9999, CardType.SKIP))
+
+        val move = Move(
+            0, 1, MoveType.PLAY_FIVE_DIFFERENT,
+            author = author, cardsPlayed = cards
+        )
+        val result = validator.validate(game, move)
+
+        assertTrue(result is ValidationResult.Accepted)
+    }
+
+    // Пять карт с повторами - отклоняется.
+    @Test
+    fun `five different with duplicate types is rejected`() {
+        val game = startedGame("Аня", "Боря")
+        val author = game.players[0]
+        val cards = listOf(
+            Card(9001, CardType.CAT_TACO),
+            Card(9002, CardType.CAT_TACO),
+            Card(9003, CardType.CAT_HAIRY_POTATO),
+            Card(9004, CardType.CAT_CATERMELON),
+            Card(9005, CardType.CAT_RAINBOW_RALPHING)
+        )
+        cards.forEach { author.addCard(it) }
+        game.discardPile.add(Card(9999, CardType.SKIP))
+
+        val move = Move(
+            0, 1, MoveType.PLAY_FIVE_DIFFERENT,
+            author = author, cardsPlayed = cards
+        )
+        val result = validator.validate(game, move)
+
+        assertTrue(result is ValidationResult.Rejected)
+    }
+
+    // Пять разных карт при пустом сбросе - отклоняется.
+    @Test
+    fun `five different with empty discard is rejected`() {
+        val game = startedGame("Аня", "Боря")
+        val author = game.players[0]
+        val cards = listOf(
+            Card(9001, CardType.CAT_TACO),
+            Card(9002, CardType.CAT_BEARD),
+            Card(9003, CardType.CAT_HAIRY_POTATO),
+            Card(9004, CardType.CAT_CATERMELON),
+            Card(9005, CardType.CAT_RAINBOW_RALPHING)
+        )
+        cards.forEach { author.addCard(it) }
+
+        val move = Move(
+            0, 1, MoveType.PLAY_FIVE_DIFFERENT,
+            author = author, cardsPlayed = cards
+        )
+        val result = validator.validate(game, move)
+
+        assertTrue(result is ValidationResult.Rejected)
+    }
 }
