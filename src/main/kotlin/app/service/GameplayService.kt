@@ -1,9 +1,11 @@
 package app.service
 
 import app.dto.ValidationResult
+import app.storage.toSummary
 import app.validator.IMoveValidator
 import domain.CardType
 import domain.Game
+import domain.GameState
 import domain.Move
 import domain.MoveType
 import domain.endsTurn
@@ -16,7 +18,9 @@ import kotlin.random.Random
 */
 class GameplayService(
     private val validator: IMoveValidator,
-    private val playerRegistry: PlayerRegistryService
+    private val playerRegistry: PlayerRegistryService,
+    private val historyService: HistoryService? = null,
+    private val statisticsService: StatisticsService? = null
 ) {
     private val games: MutableMap<Int, Game> = mutableMapOf()
     private var nextGameId: Int = 1
@@ -57,6 +61,7 @@ class GameplayService(
                 game.addMove(result.move)
                 if (game.isFinished()) {
                     game.finish()
+                    persistFinishedGame(game)
                 } else if (result.move.endsTurn) {
                     game.advanceTurn(forAttack = isAttackMove(result.move))
                 }
@@ -101,6 +106,7 @@ class GameplayService(
         game.addMove(pending)
         if (game.isFinished()) {
             game.finish()
+            persistFinishedGame(game)
         } else if (pending.endsTurn) {
             game.advanceTurn(forAttack = isAttackMove(pending))
         }
@@ -109,8 +115,9 @@ class GameplayService(
 
     fun endGame(gameId: Int): Boolean {
         val game = games[gameId] ?: return false
-        if (game.state == domain.GameState.FINISHED) return false
+        if (game.state == GameState.FINISHED) return false
         game.finish()
+        persistFinishedGame(game)
         return true
     }
 
@@ -208,5 +215,11 @@ class GameplayService(
 
         val taken = game.discardPile.takeAnyCard() ?: return
         author.addCard(taken)
+    }
+
+
+    private fun persistFinishedGame(game: Game) {
+        historyService?.saveGame(game)
+        statisticsService?.updateStats(game.toSummary())
     }
 }

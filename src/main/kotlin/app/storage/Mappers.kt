@@ -35,3 +35,10 @@ fun GameRecord.toSummary(): GameSummary = GameSummary(
     winnerName = winnerName,
     turnsPlayed = turnsPlayed
 )
+
+fun Game.toSummary(): GameSummary = GameSummary(
+    gameId = id,
+    playerNames = players.map { it.name },
+    winnerName = winner?.name,
+    turnsPlayed = turnsPlayed
+)
