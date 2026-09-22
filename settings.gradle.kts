@@ -1,1 +1,1 @@
-rootProject.name = "bang"
+rootProject.name = "exploding-kittens-tracker"
