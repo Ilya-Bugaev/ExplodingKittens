@@ -18,10 +18,11 @@ enum CardType {
     CAT_HAIRY_POTATO
     CAT_CATERMELON
     CAT_RAINBOW_RALPHING
+    --
+    +isCatCard: Boolean
+    +displayName: String
 }
 
-' ИСПРАВЛЕНО: добавлен START — системное событие первичной раздачи,
-' без него ReplaySystem не знает начальное состояние партии.
 enum MoveType {
     START
     DRAW
@@ -42,6 +43,7 @@ enum GameState {
 class Card {
     +id: Int
     +type: CardType
+    +isExplodingKitten: Boolean
 }
 
 ' ================= ИГРОК =================
@@ -50,7 +52,7 @@ class Player {
     +name: String
     +isAlive: Boolean
     +addCard(card: Card): Unit
-    +removeCard(card: Card): Unit
+    +removeCard(card: Card): Boolean
     +hasCardOfType(type: CardType): Boolean
     +findCardsOfType(type: CardType): List<Card>
     +eliminate(): Unit
@@ -58,7 +60,7 @@ class Player {
 
 ' ================= КОЛОДА И СБРОС =================
 class Deck {
-    +shuffle(): Unit
+    +shuffle(random: Random = Random.Default): Unit
     +draw(): Card
     +peekTop(amount: Int): List<Card>
     +insertCardAt(position: Int, card: Card): Unit
@@ -73,13 +75,13 @@ class DiscardPile {
     +takeAnyCard(): Card?
     +takeCardOfType(type: CardType): Card?
     +size(): Int
+    +isEmpty(): Boolean
 }
 
 ' ================= ХОД =================
 class Move {
     +id: Int
     +turnNumber: Int
-    +timestamp: DateTime
     +type: MoveType
     +cardsPlayed: List<Card>
     +drawnCard: Card?
@@ -89,6 +91,7 @@ class Move {
     +eliminated: Boolean
     +initialHands: Map<Int, List<Card>>?
     +initialDeckOrder: List<Card>?
+    +endsTurn: Boolean
 }
 
 ' ================= ПАРТИЯ =================
@@ -98,12 +101,19 @@ class Game {
     +currentTurnIndex: Int
     +turnsPlayed: Int
     +attacksPending: Int
-    +eliminationOrder: List<Player>
-    +startGame(playerNames: List<String>): Unit
+    +startGame(playerNames: List<String>, random: Random = Random.Default): Unit
     +getCurrentPlayer(): Player
     +getAlivePlayers(): List<Player>
     +isFinished(): Boolean
     +finish(): Unit
+    +addMove(move: Move): Move
+    +advanceTurn(forAttack: Boolean): Unit
+    +setAttacksPending(value: Int): Unit
+    +setPendingKitten(card: Card): Unit
+    +clearPendingKitten(): Unit
+    +setPendingMove(move: Move): Unit
+    +clearPendingMove(): Unit
+    +getInitialSetup(): String
 }
 
 ' ================= СВЯЗИ =================
@@ -118,7 +128,8 @@ DiscardPile "1" o-- "0..*" Card : сброшенные карты
 
 Move "0..*" --> "0..1" Player : автор
 Move "0..*" --> "0..1" Player : цель
-Move "0..1" --> "1" Move : отменяет
+
+Move "0..1" --> "0..1" Move : отменяет
 
 Game "1" --> "0..1" Player : победитель
 Game "1" --> "0..1" Move : ожидает разрешения (окно Nope / ответ игрока)
