@@ -49,7 +49,8 @@ class EKMoveValidator : IMoveValidator {
         if (!author.isAlive) {
             return ValidationResult.Rejected(listOf("author is eliminated"))
         }
-        if (!isNopePlay(move) && author.id != game.getCurrentPlayer().id) {
+        val offTurnAllowed = isNopePlay(move) || move.type == MoveType.RESOLVE_PENDING
+        if (!offTurnAllowed && author.id != game.getCurrentPlayer().id) {
             return ValidationResult.Rejected(listOf("not author's turn"))
         }
         return null
@@ -277,8 +278,40 @@ DEFUSE играется только тогда, когда игрок вытя�
         return ValidationResult.Accepted(move)
     }
 
+    /*
+    RESOLVE_PENDING - ответ на FAVOR. Автор - цель FAVOR, карта - то,
+    что он отдаёт. Проверяет, что ждут именно его и что карта в руке.
+    */
     private fun validateResolvePending(game: Game, move: Move): ValidationResult {
-        // TODO: реализовать в будущем
+        val pending = game.pendingMove
+            ?: return ValidationResult.Rejected(listOf("нет ожидающего хода"))
+
+        val author = move.author
+            ?: return ValidationResult.Rejected(listOf("RESOLVE_PENDING требует автора"))
+        if (!author.isAlive) {
+            return ValidationResult.Rejected(listOf("автор выбыл"))
+        }
+
+        if (move.cardsPlayed.size != 1) {
+            return ValidationResult.Rejected(listOf("нужна ровно одна карта"))
+        }
+
+        val card = move.cardsPlayed.first()
+        if (!author.hand.contains(card)) {
+            return ValidationResult.Rejected(listOf("карта не в руке автора"))
+        }
+
+        val pendingCard = pending.cardsPlayed.singleOrNull()
+        if (pendingCard?.type != CardType.FAVOR) {
+            return ValidationResult.Rejected(listOf("ожидается ответ на FAVOR"))
+        }
+
+        val expected = pending.target
+            ?: return ValidationResult.Rejected(listOf("FAVOR без цели"))
+        if (author.id != expected.id) {
+            return ValidationResult.Rejected(listOf("отвечает не тот игрок"))
+        }
+
         return ValidationResult.Accepted(move)
     }
 
@@ -287,10 +320,10 @@ DEFUSE играется только тогда, когда игрок вытя�
                 move.cardsPlayed.singleOrNull()?.type == CardType.NOPE
 
     /*
-Проверяет, что все карты в списке есть в руке автора.
-Возвращает Rejected с описанием первой отсутствующей карты или null,
-если все карты на месте.
-*/
+    Проверяет, что все карты в списке есть в руке автора.
+    Возвращает Rejected с описанием первой отсутствующей карты или null,
+    если все карты на месте.
+    */
     private fun checkAllCardsInHand(author: Player, cards: List<Card>): ValidationResult.Rejected? {
         val handIds = author.hand.map { it.id }.toSet()
         val missing = cards.firstOrNull { it.id !in handIds }

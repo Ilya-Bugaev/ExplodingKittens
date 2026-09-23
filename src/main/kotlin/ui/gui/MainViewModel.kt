@@ -80,9 +80,9 @@ class MainViewModel(
     }
 
     /*
-Взять карту из колоды. Собирает Move с текущим игроком.
-Возвращает результат валидации.
-*/
+    Взять карту из колоды. Собирает Move с текущим игроком.
+    Возвращает результат валидации.
+    */
     fun drawCard(): ValidationResult {
         val game = activeGame() ?: return noActiveGame()
         val current = game.getCurrentPlayer()
@@ -119,8 +119,8 @@ class MainViewModel(
     }
 
     /*
-FAVOR: сыграть FAVOR с указанием цели.
-*/
+    FAVOR: сыграть FAVOR с указанием цели.
+    */
     fun playFavor(cardId: Int, targetPlayerId: Int): ValidationResult {
         val game = activeGame() ?: return noActiveGame()
         val current = game.getCurrentPlayer()
@@ -135,6 +135,28 @@ FAVOR: сыграть FAVOR с указанием цели.
             type = domain.MoveType.PLAY_CARD,
             author = current,
             target = target,
+            cardsPlayed = listOf(card)
+        )
+        return submitMove(move)
+    }
+
+    /*
+Ответ цели FAVOR: какую карту отдать.
+*/
+    fun submitFavorResponse(cardId: Int): ValidationResult {
+        val game = activeGame() ?: return noActiveGame()
+        val pending = game.pendingMove
+            ?: return ValidationResult.Rejected(listOf("нет ожидающего хода"))
+        val responder = pending.target
+            ?: return ValidationResult.Rejected(listOf("цель не определена"))
+        val card = responder.hand.firstOrNull { it.id == cardId }
+            ?: return ValidationResult.Rejected(listOf("карта не в руке"))
+
+        val move = domain.Move(
+            id = 0,
+            turnNumber = game.turnsPlayed + 1,
+            type = domain.MoveType.RESOLVE_PENDING,
+            author = responder,
             cardsPlayed = listOf(card)
         )
         return submitMove(move)
@@ -260,6 +282,18 @@ FAVOR: сыграть FAVOR с указанием цели.
 
     private fun buildUiState(game: Game, registeredPlayers: List<String>): UiState {
         val current = game.getCurrentPlayer()
+        val awaitingFavor = game.pendingMove?.let { pending ->
+            val pendingCard = pending.cardsPlayed.singleOrNull()
+            if (pendingCard?.type == domain.CardType.FAVOR) {
+                pending.target?.let { responder ->
+                    FavorResponseInfo(
+                        responderId = responder.id,
+                        responderName = responder.name,
+                        responderHand = responder.hand.map { it.toView() }
+                    )
+                }
+            } else null
+        }
         return UiState(
             gameId = game.id,
             state = game.state.name,
@@ -272,6 +306,7 @@ FAVOR: сыграть FAVOR с указанием цели.
                     isCurrent = it.id == current.id
                 )
             },
+            awaitingFavorResponse = awaitingFavor,
             currentPlayerName = current.name,
             deckSize = game.deck.size,
             discardSize = game.discardPile.size(),

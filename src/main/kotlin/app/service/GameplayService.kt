@@ -5,17 +5,11 @@ import app.storage.toSummary
 import app.validator.IMoveValidator
 import domain.CardType
 import domain.Game
-import domain.GameState
 import domain.Move
 import domain.MoveType
 import domain.endsTurn
 import kotlin.random.Random
 
-/*
-Оркестратор партий. Хранит активные игры в памяти, валидирует ходы
-и применяет их эффекты. На шаге 2 - только in-memory; на шаге 4
-добавится сохранение через IHistoryRepository.
-*/
 class GameplayService(
     private val validator: IMoveValidator,
     private val playerRegistry: PlayerRegistryService,
@@ -74,6 +68,7 @@ class GameplayService(
             }
 
             is ValidationResult.AwaitingResponse -> {
+                applyImmediateEffect(game, result.pendingMove)
                 game.setPendingMove(result.pendingMove)
                 result
             }
@@ -85,8 +80,7 @@ class GameplayService(
     действие отменяется. Иначе - эффект применяется.
 
     Факт прихода NOPE обрабатывается playMove ДО вызова этого метода.
-    Здесь только разрешение цепочки: если последний ход в pendingMove
-    это NOPE, значит отменяем; иначе применяем.
+    Здесь только разрешение цепочки.
     */
     fun resolveNopeWindow(gameId: Int): ValidationResult {
         val game = games[gameId]
@@ -115,7 +109,7 @@ class GameplayService(
 
     fun endGame(gameId: Int): Boolean {
         val game = games[gameId] ?: return false
-        if (game.state == GameState.FINISHED) return false
+        if (game.state == domain.GameState.FINISHED) return false
         game.finish()
         persistFinishedGame(game)
         return true
@@ -135,6 +129,15 @@ class GameplayService(
                 move.cardsPlayed.singleOrNull()?.type == CardType.ATTACK
 
     /*
+    Сохраняет завершённую партию в историю и обновляет статистику.
+    Если сервисы не подключены (шаг 2 без персистентности) - no-op.
+    */
+    private fun persistFinishedGame(game: Game) {
+        historyService?.saveGame(game)
+        statisticsService?.updateStats(game.toSummary())
+    }
+
+    /*
     Применяет эффект хода к партии. Для START - no-op.
     Для остальных типов - обновляет колоду, руку, сброс и т.д.
     */
@@ -146,7 +149,20 @@ class GameplayService(
             MoveType.PLAY_TWO_OF_A_KIND -> applyTwoOfAKind(game, move)
             MoveType.PLAY_THREE_OF_A_KIND -> applyThreeOfAKind(game, move)
             MoveType.PLAY_FIVE_DIFFERENT -> applyFiveDifferent(game, move)
-            MoveType.RESOLVE_PENDING -> Unit
+            MoveType.RESOLVE_PENDING -> applyResolvePending(game, move)
+        }
+    }
+
+    /*
+    Применяет немедленную часть эффекта хода, ожидающего ответа.
+    Для FAVOR - карта уходит из руки в сброс сразу, а передача
+    приходит позже через RESOLVE_PENDING.
+    */
+    private fun applyImmediateEffect(game: Game, move: Move) {
+        val author = move.author ?: return
+        move.cardsPlayed.forEach {
+            author.removeCard(it)
+            game.discardPile.add(it)
         }
     }
 
@@ -217,9 +233,25 @@ class GameplayService(
         author.addCard(taken)
     }
 
+    /*
+    RESOLVE_PENDING: цель FAVOR отдаёт карту. Карта уходит из её руки
+    в руку автора FAVOR. Отложенный ход добавляется в историю,
+    pendingMove сбрасывается.
+    */
+    private fun applyResolvePending(game: Game, move: Move) {
+        val responder = move.author ?: return
+        val card = move.cardsPlayed.singleOrNull() ?: return
+        val pending = game.pendingMove ?: return
 
-    private fun persistFinishedGame(game: Game) {
-        historyService?.saveGame(game)
-        statisticsService?.updateStats(game.toSummary())
+        responder.removeCard(card)
+
+        val pendingCard = pending.cardsPlayed.singleOrNull()
+        if (pendingCard?.type == CardType.FAVOR) {
+            val receiver = pending.author ?: return
+            receiver.addCard(card)
+        }
+
+        game.addMove(pending)
+        game.clearPendingMove()
     }
 }

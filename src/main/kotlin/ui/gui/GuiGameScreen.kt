@@ -100,6 +100,14 @@ fun GuiGameScreen(viewModel: MainViewModel) {
             }
         )
     }
+
+    state.awaitingFavorResponse?.let { info ->
+        FavorResponseDialog(
+            responderName = info.responderName,
+            hand = info.responderHand,
+            onCardSelected = { cardId -> viewModel.submitFavorResponse(cardId) }
+        )
+    }
 }
 
 @Composable
@@ -288,5 +296,36 @@ private fun TargetPickerDialog(
         dismissButton = {
             TextButton(onClick = onDismiss) { Text("Отмена") }
         }
+    )
+}
+
+/*
+Диалог ответа на FAVOR: цель выбирает карту для передачи.
+Без кнопки «Отмена» - FAVOR нельзя проигнорировать.
+*/
+@Composable
+private fun FavorResponseDialog(
+    responderName: String,
+    hand: List<CardView>,
+    onCardSelected: (Int) -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = { /* нельзя закрыть */ },
+        title = { Text("$responderName, отдай карту") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                if (hand.isEmpty()) {
+                    Text("Рука пуста. Нечего отдать.")
+                } else {
+                    hand.forEach { card ->
+                        TextButton(onClick = { onCardSelected(card.id) }) {
+                            Text(card.displayName)
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {}
     )
 }

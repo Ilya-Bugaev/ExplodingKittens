@@ -17,7 +17,8 @@ data class UiState(
     val winnerName: String? = null,
     val currentHand: List<CardView> = emptyList(),
     val registeredPlayers: List<String> = emptyList(),
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val awaitingFavorResponse: FavorResponseInfo? = null
 )
 
 data class PlayerView(
@@ -32,4 +33,10 @@ data class CardView(
     val id: Int,
     val type: String,
     val displayName: String
+)
+
+data class FavorResponseInfo(
+    val responderId: Int,
+    val responderName: String,
+    val responderHand: List<CardView>
 )

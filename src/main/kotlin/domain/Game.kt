@@ -126,7 +126,8 @@ class Game(val id: Int) {
     */
     fun finish() {
         state = GameState.FINISHED
-        winner = getAlivePlayers().firstOrNull()
+        val alive = getAlivePlayers()
+        winner = if (alive.size == 1) alive.first() else null
     }
 
     /*
