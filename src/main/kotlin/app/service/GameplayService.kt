@@ -3,13 +3,20 @@ package app.service
 import app.dto.ValidationResult
 import app.storage.toSummary
 import app.validator.IMoveValidator
+import domain.Card
 import domain.CardType
 import domain.Game
 import domain.Move
 import domain.MoveType
+import domain.Player
 import domain.endsTurn
 import kotlin.random.Random
 
+/*
+Оркестратор партий. Хранит активные игры в памяти, валидирует ходы
+и применяет их эффекты. На шаге 2 - только in-memory; на шаге 4
+добавится сохранение через IHistoryRepository.
+*/
 class GameplayService(
     private val validator: IMoveValidator,
     private val playerRegistry: PlayerRegistryService,
@@ -52,14 +59,20 @@ class GameplayService(
 
             is ValidationResult.Accepted -> {
                 applyEffect(game, result.move)
-                game.addMove(result.move)
+
+                // Если DRAW привёл к выбыванию автора - отметить в Move
+                val eliminated = result.move.type == MoveType.DRAW &&
+                        result.move.author?.isAlive == false
+                val storedMove = if (eliminated) result.move.copy(eliminated = true) else result.move
+                game.addMove(storedMove)
+
                 when {
                     game.isFinished() -> {
                         game.finish()
                         persistFinishedGame(game)
                     }
-                    game.pendingKitten != null -> Unit  // ждём DEFUSE, ход не переходит
-                    result.move.endsTurn -> game.advanceTurn(forAttack = isAttackMove(result.move))
+                    game.pendingKitten != null -> Unit
+                    storedMove.endsTurn -> game.advanceTurn(forAttack = isAttackMove(storedMove))
                 }
                 result
             }
@@ -80,9 +93,6 @@ class GameplayService(
     /*
     Закрывает окно Nope. Если последний pendingMove - это NOPE,
     действие отменяется. Иначе - эффект применяется.
-
-    Факт прихода NOPE обрабатывается playMove ДО вызова этого метода.
-    Здесь только разрешение цепочки.
     */
     fun resolveNopeWindow(gameId: Int): ValidationResult {
         val game = games[gameId]
@@ -124,9 +134,7 @@ class GameplayService(
     fun getActiveGameIds(): Set<Int> = games.keys.toSet()
 
     /*
-    Определяет, является ли ход розыгрышем карты ATTACK. Используется
-    для передачи флага forAttack в advanceTurn - следующий игрок
-    получит 2 хода.
+    Определяет, является ли ход розыгрышем карты ATTACK.
     */
     private fun isAttackMove(move: Move): Boolean =
         move.type == MoveType.PLAY_CARD &&
@@ -134,7 +142,7 @@ class GameplayService(
 
     /*
     Сохраняет завершённую партию в историю и обновляет статистику.
-    Если сервисы не подключены (шаг 2 без персистентности) - no-op.
+    Если сервисы не подключены - no-op.
     */
     private fun persistFinishedGame(game: Game) {
         historyService?.saveGame(game)
@@ -142,8 +150,7 @@ class GameplayService(
     }
 
     /*
-    Применяет эффект хода к партии. Для START - no-op.
-    Для остальных типов - обновляет колоду, руку, сброс и т.д.
+    Применяет эффект хода к партии.
     */
     private fun applyEffect(game: Game, move: Move) {
         when (move.type) {
@@ -159,8 +166,7 @@ class GameplayService(
 
     /*
     Применяет немедленную часть эффекта хода, ожидающего ответа.
-    Для FAVOR - карта уходит из руки в сброс сразу, а передача
-    приходит позже через RESOLVE_PENDING.
+    Для FAVOR - карта уходит из руки в сброс сразу.
     */
     private fun applyImmediateEffect(game: Game, move: Move) {
         val author = move.author ?: return
@@ -170,14 +176,37 @@ class GameplayService(
         }
     }
 
+    /*
+    Взятие карты. Если выпал Exploding Kitten:
+      - с DEFUSE в руке - ждём розыгрыша DEFUSE (pendingKitten);
+      - без DEFUSE - игрок выбывает немедленно.
+    */
     private fun applyDraw(game: Game, move: Move) {
         val author = move.author ?: return
         val drawn = game.deck.draw()
         if (drawn.isExplodingKitten) {
-            game.setPendingKitten(drawn)
+            if (author.hasCardOfType(CardType.DEFUSE)) {
+                game.setPendingKitten(drawn)
+            } else {
+                eliminatePlayer(game, author, drawn)
+            }
         } else {
             author.addCard(drawn)
         }
+    }
+
+    /*
+    Выбывание игрока, вытянувшего Exploding Kitten без DEFUSE.
+    Карты руки и котёнок уходят в сброс. pendingKitten не выставляется.
+    */
+    private fun eliminatePlayer(game: Game, player: Player, kitten: Card) {
+        player.hand.toList().forEach { card ->
+            player.removeCard(card)
+            game.discardPile.add(card)
+        }
+        game.discardPile.add(kitten)
+        player.eliminate()
+        game.clearPendingKitten()
     }
 
     private fun applyPlayCard(game: Game, move: Move) {
@@ -229,6 +258,10 @@ class GameplayService(
         author.addCard(stolen)
     }
 
+    /*
+    Пять разных: взять из сброса выбранную карту.
+    Если receivedCard не задан - берётся верхняя.
+    */
     private fun applyFiveDifferent(game: Game, move: Move) {
         val author = move.author ?: return
         move.cardsPlayed.forEach { author.removeCard(it); game.discardPile.add(it) }

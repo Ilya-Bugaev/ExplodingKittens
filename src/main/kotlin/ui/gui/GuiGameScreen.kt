@@ -52,6 +52,8 @@ private data class ComboRequest(
   - DEFUSE (выбор позиции для возврата котёнка);
   - обычные карты (отправка сразу);
   - комбинации: пара, тройка, пятёрка разных.
+
+Когда партия завершена, показывает результат и кнопку «Новая партия».
 */
 @Composable
 fun GuiGameScreen(viewModel: MainViewModel) {
@@ -72,50 +74,64 @@ fun GuiGameScreen(viewModel: MainViewModel) {
         Header(state)
         PlayersList(state)
 
-        if (state.gameId != null) {
-            GameStatus(state)
-            CurrentHand(
-                state = state,
-                selectionMode = selectionMode,
-                selectedCards = selectedCards,
-                onToggleSelection = { id ->
-                    selectedCards = if (id in selectedCards) selectedCards - id else selectedCards + id
-                },
-                onPlayCard = { card ->
-                    when (card.type) {
-                        "FAVOR" -> pendingFavorCardId = card.id
-                        "DEFUSE" -> pendingDefuseCardId = card.id
-                        else -> viewModel.playCard(card.id)
-                    }
-                }
-            )
-
-            if (selectionMode) {
-                ComboButtons(
-                    selectedCount = selectedCards.size,
-                    onCombo = { type -> comboRequest = ComboRequest(type, selectedCards) },
-                    onCancel = {
-                        selectionMode = false
-                        selectedCards = emptySet()
+        when {
+            // Партия идёт — игровой режим
+            state.gameId != null && !state.isFinished -> {
+                GameStatus(state)
+                CurrentHand(
+                    state = state,
+                    selectionMode = selectionMode,
+                    selectedCards = selectedCards,
+                    onToggleSelection = { id ->
+                        selectedCards = if (id in selectedCards) selectedCards - id else selectedCards + id
+                    },
+                    onPlayCard = { card ->
+                        when (card.type) {
+                            "FAVOR" -> pendingFavorCardId = card.id
+                            "DEFUSE" -> pendingDefuseCardId = card.id
+                            else -> viewModel.playCard(card.id)
+                        }
                     }
                 )
-            } else {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(onClick = { viewModel.drawCard() }) {
-                        Text("Взять карту")
-                    }
-                    Button(onClick = { selectionMode = true }) {
-                        Text("Комбинация")
-                    }
-                    Button(onClick = { viewModel.endGame() }) {
-                        Text("Завершить партию")
+
+                if (selectionMode) {
+                    ComboButtons(
+                        selectedCount = selectedCards.size,
+                        onCombo = { type -> comboRequest = ComboRequest(type, selectedCards) },
+                        onCancel = {
+                            selectionMode = false
+                            selectedCards = emptySet()
+                        }
+                    )
+                } else {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(onClick = { viewModel.drawCard() }) {
+                            Text("Взять карту")
+                        }
+                        Button(onClick = { selectionMode = true }) {
+                            Text("Комбинация")
+                        }
+                        Button(onClick = { viewModel.endGame() }) {
+                            Text("Завершить партию")
+                        }
                     }
                 }
             }
-        } else {
-            Text("Партия не начата.")
-            Button(onClick = { showNewGameDialog = true }) {
-                Text("Начать партию")
+
+            // Партия завершена — показываем результат и кнопку новой партии
+            state.gameId != null && state.isFinished -> {
+                GameStatus(state)
+                Button(onClick = { showNewGameDialog = true }) {
+                    Text("Новая партия")
+                }
+            }
+
+            // Партия ещё не начиналась
+            else -> {
+                Text("Партия не начата.")
+                Button(onClick = { showNewGameDialog = true }) {
+                    Text("Начать партию")
+                }
             }
         }
 
@@ -247,7 +263,7 @@ private fun Header(state: UiState) {
 private fun PlayersList(state: UiState) {
     Text("Игроки", style = MaterialTheme.typography.titleMedium)
     if (state.players.isEmpty()) {
-        Text("- пока никого -")
+        Text("— пока никого —")
         return
     }
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -274,7 +290,7 @@ private fun GameStatus(state: UiState) {
     }
     if (state.pendingKitten) {
         Text(
-            text = "⚠ Вытянут взрывной котёнок - нужен DEFUSE",
+            text = "Вытянут взрывной котёнок — нужен DEFUSE",
             color = MaterialTheme.colorScheme.error
         )
     }
@@ -297,7 +313,7 @@ private fun CurrentHand(
 ) {
     Text("Рука ${state.currentPlayerName}", style = MaterialTheme.typography.titleMedium)
     if (state.currentHand.isEmpty()) {
-        Text("- рука пуста -")
+        Text("— рука пуста —")
         return
     }
     LazyColumn(
@@ -485,7 +501,7 @@ private fun DefusePositionDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("В колоде сейчас $deckSize карт.")
-                Text("0 - верх колоды, $deckSize - низ.")
+                Text("0 — верх колоды, $deckSize — низ.")
                 OutlinedTextField(
                     value = input,
                     onValueChange = { new -> input = new.filter { it.isDigit() } },
