@@ -53,11 +53,13 @@ class GameplayService(
             is ValidationResult.Accepted -> {
                 applyEffect(game, result.move)
                 game.addMove(result.move)
-                if (game.isFinished()) {
-                    game.finish()
-                    persistFinishedGame(game)
-                } else if (result.move.endsTurn) {
-                    game.advanceTurn(forAttack = isAttackMove(result.move))
+                when {
+                    game.isFinished() -> {
+                        game.finish()
+                        persistFinishedGame(game)
+                    }
+                    game.pendingKitten != null -> Unit  // ждём DEFUSE, ход не переходит
+                    result.move.endsTurn -> game.advanceTurn(forAttack = isAttackMove(result.move))
                 }
                 result
             }
@@ -98,11 +100,13 @@ class GameplayService(
 
         applyEffect(game, pending)
         game.addMove(pending)
-        if (game.isFinished()) {
-            game.finish()
-            persistFinishedGame(game)
-        } else if (pending.endsTurn) {
-            game.advanceTurn(forAttack = isAttackMove(pending))
+        when {
+            game.isFinished() -> {
+                game.finish()
+                persistFinishedGame(game)
+            }
+            game.pendingKitten != null -> Unit
+            pending.endsTurn -> game.advanceTurn(forAttack = isAttackMove(pending))
         }
         return ValidationResult.Accepted(pending)
     }

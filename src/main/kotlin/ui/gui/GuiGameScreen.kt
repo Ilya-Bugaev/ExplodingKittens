@@ -27,14 +27,21 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
 /*
-Игровой экран. Отображает UiState, отправляет команды в MainViewModel.
-Никакой логики - только UI.
+Игровой экран на Compose. Отображает UiState, отправляет команды
+в MainViewModel. Логики не содержит.
+
+Обрабатывает четыре интерактивных сценария:
+  - новая партия (выбор игроков);
+  - FAVOR (выбор цели, затем ответ цели картой);
+  - DEFUSE (выбор позиции для возврата котёнка);
+  - обычные карты (отправка сразу).
 */
 @Composable
 fun GuiGameScreen(viewModel: MainViewModel) {
     val state by viewModel.state.collectAsState()
     var showNewGameDialog by remember { mutableStateOf(false) }
     var pendingFavorCardId by remember { mutableStateOf<Int?>(null) }
+    var pendingDefuseCardId by remember { mutableStateOf<Int?>(null) }
 
     Column(
         modifier = Modifier.fillMaxSize().padding(16.dp),
@@ -46,10 +53,10 @@ fun GuiGameScreen(viewModel: MainViewModel) {
         if (state.gameId != null) {
             GameStatus(state)
             CurrentHand(state) { card ->
-                if (card.type == "FAVOR") {
-                    pendingFavorCardId = card.id
-                } else {
-                    viewModel.playCard(card.id)
+                when (card.type) {
+                    "FAVOR" -> pendingFavorCardId = card.id
+                    "DEFUSE" -> pendingDefuseCardId = card.id
+                    else -> viewModel.playCard(card.id)
                 }
             }
             ActionButtons(state, viewModel)
@@ -101,6 +108,17 @@ fun GuiGameScreen(viewModel: MainViewModel) {
         )
     }
 
+    pendingDefuseCardId?.let { cardId ->
+        DefusePositionDialog(
+            deckSize = state.deckSize,
+            onDismiss = { pendingDefuseCardId = null },
+            onConfirm = { position ->
+                viewModel.submitDefuse(cardId, position)
+                pendingDefuseCardId = null
+            }
+        )
+    }
+
     state.awaitingFavorResponse?.let { info ->
         FavorResponseDialog(
             responderName = info.responderName,
@@ -126,7 +144,7 @@ private fun Header(state: UiState) {
 private fun PlayersList(state: UiState) {
     Text("Игроки", style = MaterialTheme.typography.titleMedium)
     if (state.players.isEmpty()) {
-        Text("— пока никого —")
+        Text("- пока никого -")
         return
     }
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -146,21 +164,23 @@ private fun GameStatus(state: UiState) {
     )
     if (state.attacksPending > 0) {
         Text(
-            text = "⚠ Висит атак: ${state.attacksPending}",
-            color = MaterialTheme.colorScheme.error
+            text = "⚠ АТАКА: ${state.currentPlayerName} ходит ещё ${state.attacksPending} раз",
+            color = MaterialTheme.colorScheme.error,
+            style = MaterialTheme.typography.titleMedium
         )
     }
     if (state.pendingKitten) {
         Text(
-            text = "⚠ Вытянут взрывной котёнок — нужен DEFUSE",
+            text = "⚠ Вытянут взрывной котёнок - нужен DEFUSE",
             color = MaterialTheme.colorScheme.error
         )
     }
     if (state.isFinished) {
-        Text(
-            text = "Победитель: ${state.winnerName ?: "—"}",
-            style = MaterialTheme.typography.titleMedium
-        )
+        val text = if (state.winnerName != null)
+            "🏆 Победитель: ${state.winnerName}"
+        else
+            "Партия завершена без победителя"
+        Text(text, style = MaterialTheme.typography.titleMedium)
     }
 }
 
@@ -171,7 +191,7 @@ private fun CurrentHand(
 ) {
     Text("Рука ${state.currentPlayerName}", style = MaterialTheme.typography.titleMedium)
     if (state.currentHand.isEmpty()) {
-        Text("— рука пуста —")
+        Text("- рука пуста -")
         return
     }
     LazyColumn(
@@ -244,8 +264,9 @@ private fun NewGameDialog(
                     label = { Text("Новый игрок (через запятую)") },
                     modifier = Modifier.fillMaxWidth()
                 )
+                val allNames = selected + input.split(",").map { it.trim() }.filter { it.isNotEmpty() }
                 Text(
-                    "Выбрано: ${(selected + input.split(",").map { it.trim() }.filter { it.isNotEmpty() }).joinToString(", ")}",
+                    "Выбрано: ${allNames.joinToString(", ")}",
                     style = MaterialTheme.typography.bodySmall
                 )
             }
@@ -327,5 +348,54 @@ private fun FavorResponseDialog(
         },
         confirmButton = {},
         dismissButton = {}
+    )
+}
+
+/*
+Диалог выбора позиции, куда вернуть Exploding Kitten после DEFUSE.
+0 - верх колоды, deckSize - низ.
+*/
+@Composable
+private fun DefusePositionDialog(
+    deckSize: Int,
+    onDismiss: () -> Unit,
+    onConfirm: (Int) -> Unit
+) {
+    var input by remember { mutableStateOf("0") }
+    val position = input.toIntOrNull()
+    val valid = position != null && position in 0..deckSize
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Куда вернуть котёнка?") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("В колоде сейчас $deckSize карт.")
+                Text("0 - верх колоды, $deckSize - низ.")
+                OutlinedTextField(
+                    value = input,
+                    onValueChange = { new -> input = new.filter { it.isDigit() } },
+                    label = { Text("Позиция") },
+                    isError = !valid,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                if (!valid) {
+                    Text(
+                        "Введите число от 0 до $deckSize",
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { position?.let { onConfirm(it) } },
+                enabled = valid
+            ) { Text("Подтвердить") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Отмена") }
+        }
     )
 }

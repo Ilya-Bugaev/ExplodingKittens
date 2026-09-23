@@ -29,6 +29,10 @@ val Move.endsTurn: Boolean
     get() = when (type) {
         MoveType.DRAW -> true
         MoveType.PLAY_CARD ->
-            cardsPlayed.singleOrNull()?.type in setOf(CardType.SKIP, CardType.ATTACK)
+            cardsPlayed.singleOrNull()?.type in setOf(
+                CardType.SKIP,
+                CardType.ATTACK,
+                CardType.DEFUSE
+            )
         else -> false
     }

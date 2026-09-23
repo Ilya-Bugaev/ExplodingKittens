@@ -141,6 +141,27 @@ class MainViewModel(
     }
 
     /*
+    DEFUSE: сыграть DEFUSE и вернуть котёнка в колоду на указанную позицию.
+    Позиция 0 - верх колоды, deckSize - низ.
+    */
+    fun submitDefuse(cardId: Int, position: Int): ValidationResult {
+        val game = activeGame() ?: return noActiveGame()
+        val current = game.getCurrentPlayer()
+        val card = current.hand.firstOrNull { it.id == cardId }
+            ?: return ValidationResult.Rejected(listOf("карта не в руке"))
+
+        val move = domain.Move(
+            id = 0,
+            turnNumber = game.turnsPlayed + 1,
+            type = domain.MoveType.PLAY_CARD,
+            author = current,
+            cardsPlayed = listOf(card),
+            placedKittenPosition = position
+        )
+        return submitMove(move)
+    }
+
+    /*
 Ответ цели FAVOR: какую карту отдать.
 */
     fun submitFavorResponse(cardId: Int): ValidationResult {
