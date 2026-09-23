@@ -16,6 +16,7 @@ repositories {
 dependencies {
     implementation(kotlin("stdlib"))
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
+    implementation("org.xerial:sqlite-jdbc:3.46.1.0")
     implementation(compose.desktop.currentOs)
     implementation(compose.material3)
 
