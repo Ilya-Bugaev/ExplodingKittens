@@ -36,6 +36,15 @@ class GameplayService(
         }
         playerNames.forEach { playerRegistry.registerPlayer(it) }
 
+        // Продолжить нумерацию с максимального id в истории,
+        // чтобы не перезаписывать существующие партии
+        historyService?.let {
+            val maxExisting = it.getAllFinishedGames().maxOfOrNull { it.gameId } ?: 0
+            if (maxExisting >= nextGameId) {
+                nextGameId = maxExisting + 1
+            }
+        }
+
         val game = Game(nextGameId)
         game.startGame(playerNames, random)
         games[nextGameId] = game

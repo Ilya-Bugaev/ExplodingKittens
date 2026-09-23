@@ -37,6 +37,15 @@ class MainViewModel(
             _state.value = _state.value.copy(errorMessage = "Нужно от 2 до 5 игроков")
             return false
         }
+
+        // Завершить предыдущую партию, если она была не закончена
+        activeGameId?.let { previousId ->
+            val previous = gameplay.getCurrentGame(previousId)
+            if (previous != null && previous.state != domain.GameState.FINISHED) {
+                gameplay.endGame(previousId)
+            }
+        }
+
         return try {
             val id = gameplay.startGame(playerNames, Random.Default)
             activeGameId = id

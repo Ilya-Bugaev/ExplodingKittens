@@ -1,7 +1,6 @@
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
-import app.repository.InMemoryPlayerRepository
 import app.service.GameplayService
 import app.service.HistoryService
 import app.service.PlayerRegistryService
@@ -11,7 +10,6 @@ import app.storage.JsonPlayerRepository
 import app.storage.JsonStatisticsRepository
 import app.validator.EKMoveValidator
 import ui.gui.GuiApp
-import ui.gui.GuiGameScreen
 import ui.gui.HistoryViewModel
 import ui.gui.LeaderboardViewModel
 import ui.gui.MainViewModel
@@ -34,7 +32,6 @@ fun main(args: Array<String>) {
     val stats = StatisticsService(statsRepo, registry)
     val gameplay = GameplayService(EKMoveValidator(), registry, history, stats)
 
-    val viewModel = MainViewModel(gameplay, registry)
 
     val gameViewModel = MainViewModel(gameplay, registry)
     val historyViewModel = HistoryViewModel(history)
