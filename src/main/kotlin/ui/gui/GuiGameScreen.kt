@@ -149,7 +149,7 @@ private fun CurrentHand(state: UiState, viewModel: MainViewModel) {
         return
     }
     LazyColumn(
-        modifier = Modifier.height(200.dp).fillMaxWidth(),
+        modifier = Modifier.height(250.dp).fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         items(state.currentHand) { card ->
@@ -162,19 +162,7 @@ private fun CurrentHand(state: UiState, viewModel: MainViewModel) {
                         text = "${card.displayName} (id=${card.id})",
                         modifier = Modifier.weight(1f)
                     )
-                    Button(onClick = {
-                        val move = Move(
-                            id = 0,
-                            turnNumber = state.turnNumber + 1,
-                            type = MoveType.PLAY_CARD,
-                            author = null,
-                            cardsPlayed = emptyList()
-                        )
-                        // NOTE: полноценный submitMove требует доменного Player.
-                        // Пока кнопка только показывает карту — реальная отправка
-                        // будет в следующем коммите через хелпер в ViewModel.
-                        viewModel.submitMove(move)
-                    }) {
+                    Button(onClick = { viewModel.playCard(card.id) }) {
                         Text("Сыграть")
                     }
                 }
@@ -186,16 +174,7 @@ private fun CurrentHand(state: UiState, viewModel: MainViewModel) {
 @Composable
 private fun ActionButtons(state: UiState, viewModel: MainViewModel) {
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Button(onClick = {
-            // DRAW ход - автор добавится в ViewModel (следующий коммит)
-            val move = Move(
-                id = 0,
-                turnNumber = state.turnNumber + 1,
-                type = MoveType.DRAW,
-                author = null
-            )
-            viewModel.submitMove(move)
-        }) {
+        Button(onClick = { viewModel.drawCard() }) {
             Text("Взять карту")
         }
 

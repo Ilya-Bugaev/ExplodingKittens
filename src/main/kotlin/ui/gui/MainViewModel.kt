@@ -80,6 +80,53 @@ class MainViewModel(
     }
 
     /*
+Взять карту из колоды. Собирает Move с текущим игроком.
+Возвращает результат валидации.
+*/
+    fun drawCard(): ValidationResult {
+        val game = activeGame() ?: return noActiveGame()
+        val current = game.getCurrentPlayer()
+
+        val move = domain.Move(
+            id = 0,
+            turnNumber = game.turnsPlayed + 1,
+            type = domain.MoveType.DRAW,
+            author = current
+        )
+        return submitMove(move)
+    }
+
+    /*
+    Сыграть карту с руки. Собирает Move с текущим игроком.
+    При необходимости передаётся цель и запрашиваемый тип карты.
+    */
+    fun playCard(cardId: Int, targetPlayerId: Int? = null, requestedCardType: domain.CardType? = null): ValidationResult {
+        val game = activeGame() ?: return noActiveGame()
+        val current = game.getCurrentPlayer()
+        val card = current.hand.firstOrNull { it.id == cardId }
+            ?: return ValidationResult.Rejected(listOf("карта не в руке"))
+
+        val move = domain.Move(
+            id = 0,
+            turnNumber = game.turnsPlayed + 1,
+            type = domain.MoveType.PLAY_CARD,
+            author = current,
+            target = targetPlayerId?.let { id -> game.players.firstOrNull { it.id == id } },
+            cardsPlayed = listOf(card),
+            requestedCardType = requestedCardType
+        )
+        return submitMove(move)
+    }
+
+    private fun activeGame(): domain.Game? =
+        activeGameId?.let { gameplay.getCurrentGame(it) }
+
+    private fun noActiveGame(): ValidationResult =
+        ValidationResult.Rejected(listOf("нет активной партии")).also {
+            _state.value = _state.value.copy(errorMessage = "нет активной партии")
+        }
+
+    /*
     Загружает уже существующую партию по id (например, из истории).
     */
     fun loadGame(gameId: Int): Boolean {
