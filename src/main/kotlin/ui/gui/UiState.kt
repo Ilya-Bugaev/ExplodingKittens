@@ -19,7 +19,8 @@ data class UiState(
     val registeredPlayers: List<String> = emptyList(),
     val errorMessage: String? = null,
     val discardPile: List<CardView> = emptyList(),
-    val awaitingFavorResponse: FavorResponseInfo? = null
+    val awaitingFavorResponse: FavorResponseInfo? = null,
+    val awaitingNope: NopeInfo? = null
 )
 
 data class PlayerView(
@@ -40,4 +41,15 @@ data class FavorResponseInfo(
     val responderId: Int,
     val responderName: String,
     val responderHand: List<CardView>
+)
+
+data class NopeInfo(
+    val pendingMoveDescription: String,
+    val eligiblePlayers: List<EligibleNopePlayer>
+)
+
+data class EligibleNopePlayer(
+    val playerId: Int,
+    val playerName: String,
+    val nopeCardId: Int
 )

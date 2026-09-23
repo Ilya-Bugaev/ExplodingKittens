@@ -57,9 +57,9 @@ class GameplayIntegrationTest {
         val handBefore = current.hand.size
 
         val move = Move(0, 1, MoveType.PLAY_CARD, author = current, cardsPlayed = listOf(skip))
-        val result = service.playMove(game.id, move)
+        service.playMove(game.id, move)
+        service.resolveNopeWindow(game.id)   // ← добавить
 
-        assertTrue(result is ValidationResult.Accepted)
         assertEquals(handBefore - 1, current.hand.size)
         assertEquals("Боря", game.getCurrentPlayer().name)
     }
@@ -74,9 +74,9 @@ class GameplayIntegrationTest {
         current.addCard(shuffle)
 
         val move = Move(0, 1, MoveType.PLAY_CARD, author = current, cardsPlayed = listOf(shuffle))
-        val result = service.playMove(game.id, move)
+        service.playMove(game.id, move)
+        service.resolveNopeWindow(game.id)   // ← добавить
 
-        assertTrue(result is ValidationResult.Accepted)
         assertEquals("Аня", game.getCurrentPlayer().name)
     }
 
@@ -90,9 +90,9 @@ class GameplayIntegrationTest {
         current.addCard(attack)
 
         val move = Move(0, 1, MoveType.PLAY_CARD, author = current, cardsPlayed = listOf(attack))
-        val result = service.playMove(game.id, move)
+        service.playMove(game.id, move)
+        service.resolveNopeWindow(game.id)   // ← добавить
 
-        assertTrue(result is ValidationResult.Accepted)
         assertEquals(2, game.attacksPending)
         assertEquals("Боря", game.getCurrentPlayer().name)
     }

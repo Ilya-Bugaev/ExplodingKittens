@@ -78,7 +78,13 @@ class GameplayService(
             }
 
             is ValidationResult.AwaitingNope -> {
-                game.setPendingMove(result.pendingMove)
+                val previousPending = game.pendingMove
+                val withChain = if (result.pendingMove.cancels == null && previousPending != null) {
+                    result.pendingMove.copy(cancels = previousPending)
+                } else {
+                    result.pendingMove
+                }
+                game.setPendingMove(withChain)
                 result
             }
 
@@ -98,27 +104,43 @@ class GameplayService(
         val game = games[gameId]
             ?: return ValidationResult.Rejected(listOf("game $gameId not found"))
 
-        val pending = game.pendingMove
-            ?: return ValidationResult.Rejected(listOf("no pending move"))
+        val chain = collectNopeChain(game)
+        if (chain.isEmpty()) {
+            return ValidationResult.Rejected(listOf("no pending move"))
+        }
 
         game.clearPendingMove()
 
-        val canceledByNope = pending.cardsPlayed.singleOrNull()?.type == CardType.NOPE
-        if (canceledByNope) {
+        val nopeCount = chain.count { move ->
+            move.cardsPlayed.singleOrNull()?.type == CardType.NOPE
+        }
+
+        if (nopeCount % 2 == 1) {
             return ValidationResult.Rejected(listOf("action was canceled by NOPE"))
         }
 
-        applyEffect(game, pending)
-        game.addMove(pending)
+        val original = chain.last()
+        applyEffect(game, original)
+        game.addMove(original)
         when {
             game.isFinished() -> {
                 game.finish()
                 persistFinishedGame(game)
             }
             game.pendingKitten != null -> Unit
-            pending.endsTurn -> game.advanceTurn(forAttack = isAttackMove(pending))
+            original.endsTurn -> game.advanceTurn(forAttack = isAttackMove(original))
         }
-        return ValidationResult.Accepted(pending)
+        return ValidationResult.Accepted(original)
+    }
+
+    private fun collectNopeChain(game: Game): List<Move> {
+        val chain = mutableListOf<Move>()
+        var current: Move? = game.pendingMove
+        while (current != null) {
+            chain.add(current)
+            current = current.cancels
+        }
+        return chain
     }
 
     fun endGame(gameId: Int): Boolean {

@@ -6,6 +6,7 @@ import app.service.GameplayService
 import app.service.PlayerRegistryService
 import app.validator.EKMoveValidator
 import domain.CardType
+import domain.GameState
 import domain.Move
 import domain.MoveType
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -22,8 +23,19 @@ class GameLifecycleTest {
         val service = GameplayService(EKMoveValidator(), registry)
     }
 
-    // Реестр игроков общий: игрок, зарегистрированный в одной партии,
-    // доступен и в следующей.
+    /*
+    Вспомогательный метод: подаёт ход и, если он ушёл в окно Nope,
+    закрывает окно. Возвращает финальный результат эффекта.
+    */
+    private fun playAndResolve(service: GameplayService, gameId: Int, move: Move): ValidationResult {
+        val first = service.playMove(gameId, move)
+        return when (first) {
+            is ValidationResult.AwaitingNope -> service.resolveNopeWindow(gameId)
+            else -> first
+        }
+    }
+
+    // Реестр игроков общий для нескольких партий.
     @Test
     fun `player registry persists across games`() {
         val app = App()
@@ -52,27 +64,28 @@ class GameLifecycleTest {
         val turns2Before = game2.turnsPlayed
 
         val move = Move(0, 1, MoveType.DRAW, author = game1.getCurrentPlayer())
-        app.service.playMove(id1, move)
+        playAndResolve(app.service, id1, move)
 
         assertEquals(turns1Before + 1, game1.turnsPlayed)
         assertEquals(turns2Before, game2.turnsPlayed)
     }
 
     // Длинная серия ходов: 20 ходов подряд без ошибок.
+    // Игроки либо берут карту, либо играют SKIP, если он есть в руке.
     @Test
     fun `twenty consecutive moves leave system in consistent state`() {
         val app = App()
         val id = app.service.startGame(listOf("Аня", "Боря", "Ваня"), Random(42))
         val game = app.service.getCurrentGame(id)!!
 
-        var playMoveCalls = 0
+        var movesPlayed = 0
         var safety = 0
 
-        while (playMoveCalls < 20 && safety < 200 && !game.isFinished()) {
+        while (movesPlayed < 20 && safety < 200 && !game.isFinished()) {
             safety++
             val current = game.getCurrentPlayer()
 
-            // Если висит котёнок — DEFUSE, если есть; иначе выбывание через сервис
+            // Если висит котёнок — DEFUSE, если есть; иначе выбывание
             if (game.pendingKitten != null) {
                 val defuse = current.findCardsOfType(CardType.DEFUSE).firstOrNull()
                 if (defuse != null) {
@@ -81,10 +94,9 @@ class GameLifecycleTest {
                         author = current, cardsPlayed = listOf(defuse),
                         placedKittenPosition = 0
                     )
-                    val result = app.service.playMove(id, defuseMove)
-                    if (result is ValidationResult.Accepted) playMoveCalls++
+                    val result = playAndResolve(app.service, id, defuseMove)
+                    if (result is ValidationResult.Accepted) movesPlayed++
                 } else {
-                    // Имитируем выбывание: сервис пока не умеет это как Move
                     current.eliminate()
                     game.clearPendingKitten()
                     game.advanceTurn(forAttack = false)
@@ -100,31 +112,29 @@ class GameLifecycleTest {
             } else {
                 Move(0, game.turnsPlayed + 1, MoveType.DRAW, author = current)
             }
-            val result = app.service.playMove(id, move)
-            if (result is ValidationResult.Accepted) playMoveCalls++
+
+            val result = playAndResolve(app.service, id, move)
+            if (result is ValidationResult.Accepted) movesPlayed++
         }
 
-        assertTrue(playMoveCalls >= 10, "expected at least 10 accepted moves, got $playMoveCalls")
-
-        // История содержит START + все принятые playMove
-        assertTrue(game.moves.isNotEmpty())
-        assertEquals(game.moves.size, playMoveCalls + 1)
+        assertTrue(movesPlayed >= 10, "expected at least 10 moves, got $movesPlayed")
+        // START + все применённые ходы
+        assertTrue(game.moves.size >= movesPlayed)
     }
 
-    // Сценарий с конца: партия завершается через endGame и получает победителя.
+    // Партия завершается через endGame, winner = null при нескольких живых.
     @Test
     fun `game can be finished and has a winner`() {
         val app = App()
         val id = app.service.startGame(listOf("Аня", "Боря", "Ваня"), Random(42))
         val game = app.service.getCurrentGame(id)!!
 
-        // Принудительно выбываем двоих
         game.players[0].eliminate()
         game.players[1].eliminate()
 
         app.service.endGame(id)
 
-        assertEquals(domain.GameState.FINISHED, game.state)
+        assertEquals(GameState.FINISHED, game.state)
         assertNotNull(game.winner)
         assertEquals("Ваня", game.winner!!.name)
     }

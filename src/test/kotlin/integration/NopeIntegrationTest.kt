@@ -59,7 +59,7 @@ class NopeIntegrationTest {
         val nopeMove = Move(0, 2, MoveType.PLAY_CARD, author = notCurrent, cardsPlayed = listOf(nope))
         val result = service.playMove(id, nopeMove)
 
-        assertTrue(result is ValidationResult.Accepted)
+        assertTrue(result is ValidationResult.AwaitingNope)
     }
 
     // resolveNopeWindow без pendingMove отклоняется.

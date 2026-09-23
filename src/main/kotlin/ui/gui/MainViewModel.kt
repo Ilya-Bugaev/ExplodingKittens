@@ -274,7 +274,29 @@ class MainViewModel(
         )
         return submitMove(move)
     }
-    
+
+    fun playNope(playerId: Int, cardId: Int): ValidationResult {
+        val game = activeGame() ?: return noActiveGame()
+        val player = game.players.firstOrNull { it.id == playerId }
+            ?: return failWithMessage(listOf("игрок не найден"))
+        val card = player.hand.firstOrNull { it.id == cardId }
+            ?: return failWithMessage(listOf("карта не в руке"))
+
+        val nopeMove = domain.Move(
+            id = 0,
+            turnNumber = game.turnsPlayed + 1,
+            type = domain.MoveType.PLAY_CARD,
+            author = player,
+            cardsPlayed = listOf(card),
+            cancels = game.pendingMove
+        )
+        return submitMove(nopeMove)
+    }
+
+    /*
+    Никто не хочет играть NOPE — закрыть окно и разрешить цепочку.
+    */
+    fun declineNope(): ValidationResult = resolveNopeWindow()
 
     private fun activeGame(): Game? =
         activeGameId?.let { gameplay.getCurrentGame(it) }
@@ -334,6 +356,21 @@ class MainViewModel(
             } else null
         }
 
+        val awaitingNope = game.pendingMove?.let { pending ->
+            val pendingCard = pending.cardsPlayed.singleOrNull()
+            if (pendingCard != null && pendingCard.type != domain.CardType.DEFUSE) {
+                val eligible = game.getAlivePlayers()
+                    .filter { it.id != pending.author?.id }
+                    .mapNotNull { p ->
+                        p.findCardsOfType(domain.CardType.NOPE).firstOrNull()?.let { nopeCard ->
+                            EligibleNopePlayer(p.id, p.name, nopeCard.id)
+                        }
+                    }
+                val description = buildNopeDescription(pending)
+                NopeInfo(description, eligible)
+            } else null
+        }
+
         return UiState(
             gameId = game.id,
             state = game.state.name,
@@ -357,7 +394,8 @@ class MainViewModel(
             currentHand = current.hand.map { it.toView() },
             registeredPlayers = registeredPlayers,
             discardPile = game.discardPile.peekAll().map { it.toView() },
-            awaitingFavorResponse = awaitingFavor
+            awaitingFavorResponse = awaitingFavor,
+            awaitingNope = awaitingNope
         )
     }
 
@@ -366,4 +404,14 @@ class MainViewModel(
         type = type.name,
         displayName = type.displayName
     )
+
+    /*
+    Строит текст: "{Имя} сыграл {Карта}" или "{Имя} сыграл NOPE".
+    */
+    private fun buildNopeDescription(pending: domain.Move): String {
+        val author = pending.author?.name ?: "?"
+        val card = pending.cardsPlayed.singleOrNull()
+        val cardName = card?.type?.displayName ?: pending.type.name
+        return "$author сыграл $cardName"
+    }
 }

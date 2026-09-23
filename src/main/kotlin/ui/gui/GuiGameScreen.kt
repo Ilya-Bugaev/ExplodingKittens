@@ -245,6 +245,15 @@ fun GuiGameScreen(viewModel: MainViewModel) {
             )
         }
     }
+
+    state.awaitingNope?.let { info ->
+        NopeDialog(
+            description = info.pendingMoveDescription,
+            eligible = info.eligiblePlayers,
+            onPlay = { playerId, cardId -> viewModel.playNope(playerId, cardId) },
+            onDecline = { viewModel.declineNope() }
+        )
+    }
 }
 
 @Composable
@@ -629,5 +638,41 @@ private fun FivePickDialog(
         },
         confirmButton = {},
         dismissButton = { TextButton(onClick = onDismiss) { Text("Отмена") } }
+    )
+}
+
+/*
+Диалог окна Nope: кто-то сыграл карту, нужно спросить всех живых,
+не хотят ли они её отменить. Показываем только тех, у кого есть NOPE.
+*/
+@Composable
+private fun NopeDialog(
+    description: String,
+    eligible: List<EligibleNopePlayer>,
+    onPlay: (Int, Int) -> Unit,
+    onDecline: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = { /* нельзя закрыть без решения */ },
+        title = { Text("Окно NOPE") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(description)
+                if (eligible.isEmpty()) {
+                    Text("Ни у кого нет карты NOPE.")
+                } else {
+                    Text("Кто сыграет NOPE?")
+                    eligible.forEach { player ->
+                        TextButton(onClick = { onPlay(player.playerId, player.nopeCardId) }) {
+                            Text("NOPE — ${player.playerName}")
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDecline) { Text("Никто не играет") }
+        },
+        dismissButton = {}
     )
 }

@@ -109,7 +109,7 @@ class EKMoveValidatorTest {
 
     // Первый START проходит.
     @Test
-    fun `first START is accepted`() {
+    fun `first START is AwaitingNope`() {
         val game = setupGame()
         val move = Move(0, 0, MoveType.START)
 
@@ -133,7 +133,7 @@ class EKMoveValidatorTest {
 
     // DRAW в свою очередь проходит.
     @Test
-    fun `DRAW by current player is accepted`() {
+    fun `DRAW by current player is AwaitingNope`() {
         val game = startedGame("Аня", "Боря")
         val author = game.players[0]
 
@@ -218,7 +218,7 @@ class EKMoveValidatorTest {
 
     // PLAY_CARD: SKIP проходит, если карта в руке.
     @Test
-    fun `PLAY_CARD SKIP is accepted when in hand`() {
+    fun `PLAY_CARD SKIP is AwaitingNope when in hand`() {
         val game = startedGame("Аня", "Боря")
         val author = game.players[0]
         val skip = Card(9999, CardType.SKIP)
@@ -227,12 +227,12 @@ class EKMoveValidatorTest {
         val move = Move(0, 1, MoveType.PLAY_CARD, author = author, cardsPlayed = listOf(skip))
         val result = validator.validate(game, move)
 
-        assertTrue(result is ValidationResult.Accepted)
+        assertTrue(result is ValidationResult.AwaitingNope)
     }
 
     // PLAY_CARD: SHUFFLE проходит, если карта в руке.
     @Test
-    fun `PLAY_CARD SHUFFLE is accepted when in hand`() {
+    fun `PLAY_CARD SHUFFLE is AwaitingNope when in hand`() {
         val game = startedGame("Аня", "Боря")
         val author = game.players[0]
         val shuffle = Card(9999, CardType.SHUFFLE)
@@ -241,12 +241,12 @@ class EKMoveValidatorTest {
         val move = Move(0, 1, MoveType.PLAY_CARD, author = author, cardsPlayed = listOf(shuffle))
         val result = validator.validate(game, move)
 
-        assertTrue(result is ValidationResult.Accepted)
+        assertTrue(result is ValidationResult.AwaitingNope)
     }
 
     // PLAY_CARD: SEE_FUTURE проходит, если карта в руке.
     @Test
-    fun `PLAY_CARD SEE_FUTURE is accepted when in hand`() {
+    fun `PLAY_CARD SEE_FUTURE is AwaitingNope when in hand`() {
         val game = startedGame("Аня", "Боря")
         val author = game.players[0]
         val seeFuture = Card(9999, CardType.SEE_FUTURE)
@@ -255,12 +255,12 @@ class EKMoveValidatorTest {
         val move = Move(0, 1, MoveType.PLAY_CARD, author = author, cardsPlayed = listOf(seeFuture))
         val result = validator.validate(game, move)
 
-        assertTrue(result is ValidationResult.Accepted)
+        assertTrue(result is ValidationResult.AwaitingNope)
     }
 
     // PLAY_CARD: ATTACK проходит, если есть живой соперник.
     @Test
-    fun `PLAY_CARD ATTACK is accepted when opponent alive`() {
+    fun `PLAY_CARD ATTACK is AwaitingNope when opponent alive`() {
         val game = startedGame("Аня", "Боря")
         val author = game.players[0]
         val attack = Card(9999, CardType.ATTACK)
@@ -269,7 +269,7 @@ class EKMoveValidatorTest {
         val move = Move(0, 1, MoveType.PLAY_CARD, author = author, cardsPlayed = listOf(attack))
         val result = validator.validate(game, move)
 
-        assertTrue(result is ValidationResult.Accepted)
+        assertTrue(result is ValidationResult.AwaitingNope)
     }
 
     // DEFUSE без ожидающего котёнка — отклоняется.
@@ -310,7 +310,7 @@ class EKMoveValidatorTest {
 
     // DEFUSE с котёнком и корректной позицией — принимается.
     @Test
-    fun `DEFUSE with pending kitten and position is accepted`() {
+    fun `DEFUSE with pending kitten and position is AwaitingNope`() {
         val game = startedGame("Аня", "Боря")
         val author = game.players[0]
         val defuse = author.findCardsOfType(CardType.DEFUSE).first()
@@ -472,7 +472,7 @@ class EKMoveValidatorTest {
 
     // NOPE на PLAY_CARD текущего игрока — принимается.
     @Test
-    fun `NOPE on PLAY_CARD is accepted`() {
+    fun `NOPE on PLAY_CARD is AwaitingNope`() {
         val game = startedGame("Аня", "Боря")
         val author = game.players[0]
         val nope = Card(9999, CardType.NOPE)
@@ -488,7 +488,7 @@ class EKMoveValidatorTest {
         val move = Move(0, 2, MoveType.PLAY_CARD, author = author, cardsPlayed = listOf(nope))
         val result = validator.validate(game, move)
 
-        assertTrue(result is ValidationResult.Accepted)
+        assertTrue(result is ValidationResult.AwaitingNope)
     }
 
     // NOPE может играть НЕ текущий игрок — это ключевое отличие от всех остальных ходов.
@@ -509,12 +509,12 @@ class EKMoveValidatorTest {
         val move = Move(0, 2, MoveType.PLAY_CARD, author = notCurrent, cardsPlayed = listOf(nope))
         val result = validator.validate(game, move)
 
-        assertTrue(result is ValidationResult.Accepted)
+        assertTrue(result is ValidationResult.AwaitingNope)
     }
 
     // NOPE на NOPE — принимается (Nope можно отменить Nope-ом).
     @Test
-    fun `NOPE on NOPE is accepted`() {
+    fun `NOPE on NOPE is AwaitingNope`() {
         val game = startedGame("Аня", "Боря")
         val author = game.players[0]
         val nope = Card(9999, CardType.NOPE)
@@ -530,14 +530,14 @@ class EKMoveValidatorTest {
         val move = Move(0, 2, MoveType.PLAY_CARD, author = author, cardsPlayed = listOf(nope))
         val result = validator.validate(game, move)
 
-        assertTrue(result is ValidationResult.Accepted)
+        assertTrue(result is ValidationResult.AwaitingNope)
     }
 
     // PLAY_TWO_OF_A_KIND
 
     // Пара одинаковых карт с живой целью - принимается.
     @Test
-    fun `two of a kind with valid target is accepted`() {
+    fun `two of a kind with valid target is AwaitingNope`() {
         val game = startedGame("Аня", "Боря")
         val author = game.players[0]
         val target = game.players[1]
@@ -618,7 +618,7 @@ class EKMoveValidatorTest {
 
     // Три одинаковые карты с запросом типа - принимается.
     @Test
-    fun `three of a kind with requested type is accepted`() {
+    fun `three of a kind with requested type is AwaitingNope`() {
         val game = startedGame("Аня", "Боря")
         val author = game.players[0]
         val target = game.players[1]
@@ -665,7 +665,7 @@ class EKMoveValidatorTest {
 
     // Пять карт разных типов - принимается.
     @Test
-    fun `five different is accepted with non-empty discard`() {
+    fun `five different is AwaitingNope with non-empty discard`() {
         val game = startedGame("Аня", "Боря")
         val author = game.players[0]
         val cards = listOf(

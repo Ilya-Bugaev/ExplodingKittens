@@ -84,7 +84,6 @@ class GameplayServiceTest {
         val game = service.getCurrentGame(id)!!
         val current = game.getCurrentPlayer()
 
-        // Добавляем SKIP в руку вручную
         val skip = Card(9999, CardType.SKIP)
         current.addCard(skip)
         val handBefore = current.hand.size
@@ -92,7 +91,12 @@ class GameplayServiceTest {
         val move = Move(0, 1, MoveType.PLAY_CARD, author = current, cardsPlayed = listOf(skip))
         val result = service.playMove(id, move)
 
-        assertTrue(result is ValidationResult.Accepted)
+        // Ход уходит в окно Nope
+        assertTrue(result is ValidationResult.AwaitingNope)
+
+        // Никто не играет NOPE — эффект применяется
+        service.resolveNopeWindow(id)
+
         assertEquals(handBefore - 1, current.hand.size)
         assertEquals(game.players[1].name, game.getCurrentPlayer().name)
     }
