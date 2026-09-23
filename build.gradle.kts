@@ -38,3 +38,7 @@ compose.desktop {
         mainClass = "MainKt"
     }
 }
+
+tasks.withType<JavaExec>().configureEach {
+    standardInput = System.`in`
+}
