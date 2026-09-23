@@ -233,7 +233,9 @@ class GameplayService(
         val author = move.author ?: return
         move.cardsPlayed.forEach { author.removeCard(it); game.discardPile.add(it) }
 
-        val taken = game.discardPile.takeAnyCard() ?: return
+        val taken = move.receivedCard?.let { game.discardPile.takeCardById(it.id) }
+            ?: game.discardPile.takeAnyCard()
+            ?: return
         author.addCard(taken)
     }
 

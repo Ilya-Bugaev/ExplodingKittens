@@ -18,6 +18,7 @@ data class UiState(
     val currentHand: List<CardView> = emptyList(),
     val registeredPlayers: List<String> = emptyList(),
     val errorMessage: String? = null,
+    val discardPile: List<CardView> = emptyList(),
     val awaitingFavorResponse: FavorResponseInfo? = null
 )
 

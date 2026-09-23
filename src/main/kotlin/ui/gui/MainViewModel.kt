@@ -3,7 +3,6 @@ package ui.gui
 import app.dto.ValidationResult
 import app.service.GameplayService
 import app.service.PlayerRegistryService
-import domain.Card
 import domain.Game
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -32,7 +31,6 @@ class MainViewModel(
 
     /*
     Создаёт новую партию с указанными игроками.
-    При успехе загружает состояние игры в UiState.
     */
     fun newGame(playerNames: List<String>): Boolean {
         if (playerNames.size !in 2..5) {
@@ -53,11 +51,10 @@ class MainViewModel(
 
     /*
     Подаёт ход в сервис, обновляет состояние.
-    Возвращает результат валидации для UI (показать ошибку или окно Nope).
     */
     fun submitMove(move: domain.Move): ValidationResult {
         val id = activeGameId
-            ?: return ValidationResult.Rejected(listOf("нет активной партии"))
+            ?: return failWithMessage(listOf("нет активной партии"))
 
         val result = gameplay.playMove(id, move)
         if (result is ValidationResult.Rejected) {
@@ -68,20 +65,45 @@ class MainViewModel(
     }
 
     /*
-    Закрывает окно Nope (все игроки отказались или сыграли).
+    Закрывает окно Nope.
     */
     fun resolveNopeWindow(): ValidationResult {
         val id = activeGameId
-            ?: return ValidationResult.Rejected(listOf("нет активной партии"))
+            ?: return failWithMessage(listOf("нет активной партии"))
 
         val result = gameplay.resolveNopeWindow(id)
+        if (result is ValidationResult.Rejected) {
+            _state.value = _state.value.copy(errorMessage = result.errors.joinToString("; "))
+        }
         refreshState()
         return result
     }
 
     /*
-    Взять карту из колоды. Собирает Move с текущим игроком.
-    Возвращает результат валидации.
+    Загружает уже существующую партию по id.
+    */
+    fun loadGame(gameId: Int): Boolean {
+        val game = gameplay.getCurrentGame(gameId) ?: return false
+        activeGameId = gameId
+        refreshState()
+        return true
+    }
+
+    fun endGame(): Boolean {
+        val id = activeGameId ?: return false
+        val result = gameplay.endGame(id)
+        refreshState()
+        return result
+    }
+
+    fun clearError() {
+        _state.value = _state.value.copy(errorMessage = null)
+    }
+
+    // ---------- Действия ----------
+
+    /*
+    Взять карту из колоды.
     */
     fun drawCard(): ValidationResult {
         val game = activeGame() ?: return noActiveGame()
@@ -97,23 +119,20 @@ class MainViewModel(
     }
 
     /*
-    Сыграть карту с руки. Собирает Move с текущим игроком.
-    При необходимости передаётся цель и запрашиваемый тип карты.
+    Сыграть карту с руки без цели.
     */
-    fun playCard(cardId: Int, targetPlayerId: Int? = null, requestedCardType: domain.CardType? = null): ValidationResult {
+    fun playCard(cardId: Int): ValidationResult {
         val game = activeGame() ?: return noActiveGame()
         val current = game.getCurrentPlayer()
         val card = current.hand.firstOrNull { it.id == cardId }
-            ?: return ValidationResult.Rejected(listOf("карта не в руке"))
+            ?: return failWithMessage(listOf("карта не в руке"))
 
         val move = domain.Move(
             id = 0,
             turnNumber = game.turnsPlayed + 1,
             type = domain.MoveType.PLAY_CARD,
             author = current,
-            target = targetPlayerId?.let { id -> game.players.firstOrNull { it.id == id } },
-            cardsPlayed = listOf(card),
-            requestedCardType = requestedCardType
+            cardsPlayed = listOf(card)
         )
         return submitMove(move)
     }
@@ -125,9 +144,9 @@ class MainViewModel(
         val game = activeGame() ?: return noActiveGame()
         val current = game.getCurrentPlayer()
         val card = current.hand.firstOrNull { it.id == cardId }
-            ?: return ValidationResult.Rejected(listOf("карта не в руке"))
+            ?: return failWithMessage(listOf("карта не в руке"))
         val target = game.players.firstOrNull { it.id == targetPlayerId }
-            ?: return ValidationResult.Rejected(listOf("цель не найдена"))
+            ?: return failWithMessage(listOf("цель не найдена"))
 
         val move = domain.Move(
             id = 0,
@@ -141,14 +160,13 @@ class MainViewModel(
     }
 
     /*
-    DEFUSE: сыграть DEFUSE и вернуть котёнка в колоду на указанную позицию.
-    Позиция 0 - верх колоды, deckSize - низ.
+    DEFUSE: сыграть DEFUSE и вернуть котёнка на указанную позицию.
     */
     fun submitDefuse(cardId: Int, position: Int): ValidationResult {
         val game = activeGame() ?: return noActiveGame()
         val current = game.getCurrentPlayer()
         val card = current.hand.firstOrNull { it.id == cardId }
-            ?: return ValidationResult.Rejected(listOf("карта не в руке"))
+            ?: return failWithMessage(listOf("карта не в руке"))
 
         val move = domain.Move(
             id = 0,
@@ -162,37 +180,15 @@ class MainViewModel(
     }
 
     /*
-Ответ цели FAVOR: какую карту отдать.
-*/
-    fun submitFavorResponse(cardId: Int): ValidationResult {
-        val game = activeGame() ?: return noActiveGame()
-        val pending = game.pendingMove
-            ?: return ValidationResult.Rejected(listOf("нет ожидающего хода"))
-        val responder = pending.target
-            ?: return ValidationResult.Rejected(listOf("цель не определена"))
-        val card = responder.hand.firstOrNull { it.id == cardId }
-            ?: return ValidationResult.Rejected(listOf("карта не в руке"))
-
-        val move = domain.Move(
-            id = 0,
-            turnNumber = game.turnsPlayed + 1,
-            type = domain.MoveType.RESOLVE_PENDING,
-            author = responder,
-            cardsPlayed = listOf(card)
-        )
-        return submitMove(move)
-    }
-
-    /*
-    Пара одинаковых карт: украсть случайную у цели.
+    Пара одинаковых: украсть случайную у цели.
     */
     fun playTwoOfAKind(cardIds: List<Int>, targetPlayerId: Int): ValidationResult {
         val game = activeGame() ?: return noActiveGame()
         val current = game.getCurrentPlayer()
         val cards = cardIds.mapNotNull { id -> current.hand.firstOrNull { it.id == id } }
-        if (cards.size != 2) return ValidationResult.Rejected(listOf("нужно две карты"))
+        if (cards.size != 2) return failWithMessage(listOf("нужно две карты"))
         val target = game.players.firstOrNull { it.id == targetPlayerId }
-            ?: return ValidationResult.Rejected(listOf("цель не найдена"))
+            ?: return failWithMessage(listOf("цель не найдена"))
 
         val move = domain.Move(
             id = 0,
@@ -216,9 +212,9 @@ class MainViewModel(
         val game = activeGame() ?: return noActiveGame()
         val current = game.getCurrentPlayer()
         val cards = cardIds.mapNotNull { id -> current.hand.firstOrNull { it.id == id } }
-        if (cards.size != 3) return ValidationResult.Rejected(listOf("нужно три карты"))
+        if (cards.size != 3) return failWithMessage(listOf("нужно три карты"))
         val target = game.players.firstOrNull { it.id == targetPlayerId }
-            ?: return ValidationResult.Rejected(listOf("цель не найдена"))
+            ?: return failWithMessage(listOf("цель не найдена"))
 
         val move = domain.Move(
             id = 0,
@@ -233,51 +229,66 @@ class MainViewModel(
     }
 
     /*
-    Пять разных: взять карту из сброса.
+    Пять разных: взять из сброса выбранную карту.
+    Если receivedCardId == null - берётся верхняя (обратная совместимость).
     */
-    fun playFiveDifferent(cardIds: List<Int>): ValidationResult {
+    fun playFiveDifferent(cardIds: List<Int>, receivedCardId: Int? = null): ValidationResult {
         val game = activeGame() ?: return noActiveGame()
         val current = game.getCurrentPlayer()
         val cards = cardIds.mapNotNull { id -> current.hand.firstOrNull { it.id == id } }
-        if (cards.size != 5) return ValidationResult.Rejected(listOf("нужно пять карт"))
+        if (cards.size != 5) return failWithMessage(listOf("нужно пять карт"))
+
+        val receivedCard = receivedCardId?.let { id ->
+            game.discardPile.peekAll().firstOrNull { it.id == id }
+        }
 
         val move = domain.Move(
             id = 0,
             turnNumber = game.turnsPlayed + 1,
             type = domain.MoveType.PLAY_FIVE_DIFFERENT,
             author = current,
-            cardsPlayed = cards
+            cardsPlayed = cards,
+            receivedCard = receivedCard
         )
         return submitMove(move)
     }
 
-    private fun activeGame(): domain.Game? =
+    /*
+    Ответ цели FAVOR: какую карту отдать.
+    */
+    fun submitFavorResponse(cardId: Int): ValidationResult {
+        val game = activeGame() ?: return noActiveGame()
+        val pending = game.pendingMove
+            ?: return failWithMessage(listOf("нет ожидающего хода"))
+        val responder = pending.target
+            ?: return failWithMessage(listOf("цель не определена"))
+        val card = responder.hand.firstOrNull { it.id == cardId }
+            ?: return failWithMessage(listOf("карта не в руке"))
+
+        val move = domain.Move(
+            id = 0,
+            turnNumber = game.turnsPlayed + 1,
+            type = domain.MoveType.RESOLVE_PENDING,
+            author = responder,
+            cardsPlayed = listOf(card)
+        )
+        return submitMove(move)
+    }
+    
+
+    private fun activeGame(): Game? =
         activeGameId?.let { gameplay.getCurrentGame(it) }
 
     private fun noActiveGame(): ValidationResult =
-        ValidationResult.Rejected(listOf("нет активной партии")).also {
-            _state.value = _state.value.copy(errorMessage = "нет активной партии")
-        }
+        failWithMessage(listOf("нет активной партии"))
 
     /*
-    Загружает уже существующую партию по id (например, из истории).
+    Возвращает Rejected и одновременно кладёт сообщение в errorMessage,
+    чтобы UI показал его пользователю.
     */
-    fun loadGame(gameId: Int): Boolean {
-        val game = gameplay.getCurrentGame(gameId) ?: return false
-        activeGameId = gameId
-        refreshState()
-        return true
-    }
-
-    fun endGame(): Boolean {
-        val id = activeGameId ?: return false
-        val result = gameplay.endGame(id)
-        refreshState()
-        return result
-    }
-
-    fun clearError() {
-        _state.value = _state.value.copy(errorMessage = null)
+    private fun failWithMessage(errors: List<String>): ValidationResult {
+        _state.value = _state.value.copy(errorMessage = errors.joinToString("; "))
+        return ValidationResult.Rejected(errors)
     }
 
     private fun refreshRegisteredPlayers() {
@@ -286,19 +297,26 @@ class MainViewModel(
         )
     }
 
+    /*
+    Перестраивает UiState из домена, сохраняя текущий errorMessage.
+    */
     private fun refreshState() {
+        val preservedError = _state.value.errorMessage
         val id = activeGameId
         if (id == null) {
             _state.value = UiState(registeredPlayers = registry.getKnownPlayerNames())
+                .copy(errorMessage = preservedError)
             return
         }
         val game = gameplay.getCurrentGame(id)
         if (game == null) {
             activeGameId = null
             _state.value = UiState(registeredPlayers = registry.getKnownPlayerNames())
+                .copy(errorMessage = preservedError)
             return
         }
         _state.value = buildUiState(game, registry.getKnownPlayerNames())
+            .copy(errorMessage = preservedError)
     }
 
     private fun buildUiState(game: Game, registeredPlayers: List<String>): UiState {
@@ -315,6 +333,7 @@ class MainViewModel(
                 }
             } else null
         }
+
         return UiState(
             gameId = game.id,
             state = game.state.name,
@@ -327,7 +346,6 @@ class MainViewModel(
                     isCurrent = it.id == current.id
                 )
             },
-            awaitingFavorResponse = awaitingFavor,
             currentPlayerName = current.name,
             deckSize = game.deck.size,
             discardSize = game.discardPile.size(),
@@ -337,11 +355,13 @@ class MainViewModel(
             isFinished = game.state == domain.GameState.FINISHED,
             winnerName = game.winner?.name,
             currentHand = current.hand.map { it.toView() },
-            registeredPlayers = registeredPlayers
+            registeredPlayers = registeredPlayers,
+            discardPile = game.discardPile.peekAll().map { it.toView() },
+            awaitingFavorResponse = awaitingFavor
         )
     }
 
-    private fun Card.toView(): CardView = CardView(
+    private fun domain.Card.toView(): CardView = CardView(
         id = id,
         type = type.name,
         displayName = type.displayName

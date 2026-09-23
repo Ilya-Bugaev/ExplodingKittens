@@ -275,6 +275,13 @@ DEFUSE играется только тогда, когда игрок вытя�
             return ValidationResult.Rejected(listOf("discard pile is empty"))
         }
 
+        val selected = move.receivedCard
+        if (selected != null) {
+            val inDiscard = game.discardPile.peekAll().any { it.id == selected.id }
+            if (!inDiscard) {
+                return ValidationResult.Rejected(listOf("выбранная карта отсутствует в сбросе"))
+            }
+        }
         return ValidationResult.Accepted(move)
     }
 

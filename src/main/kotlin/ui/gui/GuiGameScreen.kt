@@ -12,6 +12,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -27,21 +28,42 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
 /*
-Игровой экран на Compose. Отображает UiState, отправляет команды
-в MainViewModel. Логики не содержит.
+Тип запрашиваемой комбинации.
+*/
+private enum class ComboType { PAIR, TRIPLE, FIVE }
 
-Обрабатывает четыре интерактивных сценария:
+/*
+Запрос на комбинацию. Хранит, какие карты выбраны и на каком шаге
+уточнения находится пользователь.
+targetId == null → ещё не выбрана цель (для пары/тройки).
+*/
+private data class ComboRequest(
+    val type: ComboType,
+    val cardIds: Set<Int>,
+    val targetId: Int? = null
+)
+
+/*
+Игровой экран на Compose.
+
+Обрабатывает интерактивные сценарии:
   - новая партия (выбор игроков);
   - FAVOR (выбор цели, затем ответ цели картой);
   - DEFUSE (выбор позиции для возврата котёнка);
-  - обычные карты (отправка сразу).
+  - обычные карты (отправка сразу);
+  - комбинации: пара, тройка, пятёрка разных.
 */
 @Composable
 fun GuiGameScreen(viewModel: MainViewModel) {
     val state by viewModel.state.collectAsState()
+
     var showNewGameDialog by remember { mutableStateOf(false) }
     var pendingFavorCardId by remember { mutableStateOf<Int?>(null) }
     var pendingDefuseCardId by remember { mutableStateOf<Int?>(null) }
+
+    var selectionMode by remember { mutableStateOf(false) }
+    var selectedCards by remember { mutableStateOf(setOf<Int>()) }
+    var comboRequest by remember { mutableStateOf<ComboRequest?>(null) }
 
     Column(
         modifier = Modifier.fillMaxSize().padding(16.dp),
@@ -52,14 +74,44 @@ fun GuiGameScreen(viewModel: MainViewModel) {
 
         if (state.gameId != null) {
             GameStatus(state)
-            CurrentHand(state) { card ->
-                when (card.type) {
-                    "FAVOR" -> pendingFavorCardId = card.id
-                    "DEFUSE" -> pendingDefuseCardId = card.id
-                    else -> viewModel.playCard(card.id)
+            CurrentHand(
+                state = state,
+                selectionMode = selectionMode,
+                selectedCards = selectedCards,
+                onToggleSelection = { id ->
+                    selectedCards = if (id in selectedCards) selectedCards - id else selectedCards + id
+                },
+                onPlayCard = { card ->
+                    when (card.type) {
+                        "FAVOR" -> pendingFavorCardId = card.id
+                        "DEFUSE" -> pendingDefuseCardId = card.id
+                        else -> viewModel.playCard(card.id)
+                    }
+                }
+            )
+
+            if (selectionMode) {
+                ComboButtons(
+                    selectedCount = selectedCards.size,
+                    onCombo = { type -> comboRequest = ComboRequest(type, selectedCards) },
+                    onCancel = {
+                        selectionMode = false
+                        selectedCards = emptySet()
+                    }
+                )
+            } else {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(onClick = { viewModel.drawCard() }) {
+                        Text("Взять карту")
+                    }
+                    Button(onClick = { selectionMode = true }) {
+                        Text("Комбинация")
+                    }
+                    Button(onClick = { viewModel.endGame() }) {
+                        Text("Завершить партию")
+                    }
                 }
             }
-            ActionButtons(state, viewModel)
         } else {
             Text("Партия не начата.")
             Button(onClick = { showNewGameDialog = true }) {
@@ -126,6 +178,57 @@ fun GuiGameScreen(viewModel: MainViewModel) {
             onCardSelected = { cardId -> viewModel.submitFavorResponse(cardId) }
         )
     }
+
+    comboRequest?.let { request ->
+        when (request.type) {
+            ComboType.PAIR -> PairDialog(
+                players = state.players.filter { it.isAlive && !it.isCurrent },
+                onDismiss = { comboRequest = null },
+                onConfirm = { targetId ->
+                    viewModel.playTwoOfAKind(request.cardIds.toList(), targetId)
+                    comboRequest = null
+                    selectionMode = false
+                    selectedCards = emptySet()
+                }
+            )
+
+            ComboType.TRIPLE -> if (request.targetId == null) {
+                TripleTargetDialog(
+                    players = state.players.filter { it.isAlive && !it.isCurrent },
+                    onDismiss = { comboRequest = null },
+                    onPick = { targetId ->
+                        comboRequest = request.copy(targetId = targetId)
+                    }
+                )
+            } else {
+                TripleTypeDialog(
+                    onDismiss = { comboRequest = null },
+                    onPick = { typeName ->
+                        val type = domain.CardType.valueOf(typeName)
+                        viewModel.playThreeOfAKind(
+                            request.cardIds.toList(),
+                            request.targetId!!,
+                            type
+                        )
+                        comboRequest = null
+                        selectionMode = false
+                        selectedCards = emptySet()
+                    }
+                )
+            }
+
+            ComboType.FIVE -> FivePickDialog(
+                discardPile = state.discardPile,
+                onDismiss = { comboRequest = null },
+                onPick = { cardId ->
+                    viewModel.playFiveDifferent(request.cardIds.toList(), cardId)
+                    comboRequest = null
+                    selectionMode = false
+                    selectedCards = emptySet()
+                }
+            )
+        }
+    }
 }
 
 @Composable
@@ -187,6 +290,9 @@ private fun GameStatus(state: UiState) {
 @Composable
 private fun CurrentHand(
     state: UiState,
+    selectionMode: Boolean,
+    selectedCards: Set<Int>,
+    onToggleSelection: (Int) -> Unit,
     onPlayCard: (CardView) -> Unit
 ) {
     Text("Рука ${state.currentPlayerName}", style = MaterialTheme.typography.titleMedium)
@@ -204,12 +310,20 @@ private fun CurrentHand(
                     modifier = Modifier.fillMaxWidth().padding(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    if (selectionMode) {
+                        Checkbox(
+                            checked = card.id in selectedCards,
+                            onCheckedChange = { onToggleSelection(card.id) }
+                        )
+                    }
                     Text(
                         text = "${card.displayName} (id=${card.id})",
                         modifier = Modifier.weight(1f)
                     )
-                    Button(onClick = { onPlayCard(card) }) {
-                        Text("Сыграть")
+                    if (!selectionMode) {
+                        Button(onClick = { onPlayCard(card) }) {
+                            Text("Сыграть")
+                        }
                     }
                 }
             }
@@ -218,22 +332,34 @@ private fun CurrentHand(
 }
 
 @Composable
-private fun ActionButtons(state: UiState, viewModel: MainViewModel) {
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Button(onClick = { viewModel.drawCard() }) {
-            Text("Взять карту")
-        }
-
-        Button(onClick = { viewModel.endGame() }) {
-            Text("Завершить партию")
+private fun ComboButtons(
+    selectedCount: Int,
+    onCombo: (ComboType) -> Unit,
+    onCancel: () -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            "Выбрано: $selectedCount",
+            style = MaterialTheme.typography.bodyMedium
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Button(
+                onClick = { onCombo(ComboType.PAIR) },
+                enabled = selectedCount == 2
+            ) { Text("Пара") }
+            Button(
+                onClick = { onCombo(ComboType.TRIPLE) },
+                enabled = selectedCount == 3
+            ) { Text("Тройка") }
+            Button(
+                onClick = { onCombo(ComboType.FIVE) },
+                enabled = selectedCount == 5
+            ) { Text("Пятёрка") }
+            TextButton(onClick = onCancel) { Text("Отмена") }
         }
     }
 }
 
-/*
-Диалог создания партии. Список известных игроков как чекбоксы
-плюс поле для нового имени.
-*/
 @Composable
 private fun NewGameDialog(
     registeredPlayers: List<String>,
@@ -286,10 +412,6 @@ private fun NewGameDialog(
     )
 }
 
-/*
-Универсальный диалог выбора целевого игрока. Используется для FAVOR,
-пар и троек.
-*/
 @Composable
 private fun TargetPickerDialog(
     title: String,
@@ -320,10 +442,6 @@ private fun TargetPickerDialog(
     )
 }
 
-/*
-Диалог ответа на FAVOR: цель выбирает карту для передачи.
-Без кнопки «Отмена» - FAVOR нельзя проигнорировать.
-*/
 @Composable
 private fun FavorResponseDialog(
     responderName: String,
@@ -351,10 +469,6 @@ private fun FavorResponseDialog(
     )
 }
 
-/*
-Диалог выбора позиции, куда вернуть Exploding Kitten после DEFUSE.
-0 - верх колоды, deckSize - низ.
-*/
 @Composable
 private fun DefusePositionDialog(
     deckSize: Int,
@@ -397,5 +511,107 @@ private fun DefusePositionDialog(
         dismissButton = {
             TextButton(onClick = onDismiss) { Text("Отмена") }
         }
+    )
+}
+
+@Composable
+private fun PairDialog(
+    players: List<PlayerView>,
+    onDismiss: () -> Unit,
+    onConfirm: (Int) -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Украсть случайную карту") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text("У кого украсть?")
+                players.forEach { player ->
+                    TextButton(onClick = { onConfirm(player.id) }) {
+                        Text(player.name)
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Отмена") } }
+    )
+}
+
+@Composable
+private fun TripleTargetDialog(
+    players: List<PlayerView>,
+    onDismiss: () -> Unit,
+    onPick: (Int) -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Шаг 1: у кого забрать карту?") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                players.forEach { player ->
+                    TextButton(onClick = { onPick(player.id) }) {
+                        Text(player.name)
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Отмена") } }
+    )
+}
+
+@Composable
+private fun TripleTypeDialog(
+    onDismiss: () -> Unit,
+    onPick: (String) -> Unit
+) {
+    val types = listOf(
+        "DEFUSE", "NOPE", "ATTACK", "SKIP", "FAVOR",
+        "SHUFFLE", "SEE_FUTURE",
+        "CAT_BEARD", "CAT_TACO", "CAT_HAIRY_POTATO",
+        "CAT_CATERMELON", "CAT_RAINBOW_RALPHING"
+    )
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Шаг 2: какой тип карты запросить?") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                types.forEach { name ->
+                    TextButton(onClick = { onPick(name) }) {
+                        Text(name)
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Отмена") } }
+    )
+}
+
+@Composable
+private fun FivePickDialog(
+    discardPile: List<CardView>,
+    onDismiss: () -> Unit,
+    onPick: (Int) -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Какую карту взять из сброса?") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                if (discardPile.isEmpty()) {
+                    Text("Сброс пуст.")
+                } else {
+                    discardPile.forEach { card ->
+                        TextButton(onClick = { onPick(card.id) }) {
+                            Text("${card.displayName} (id=${card.id})")
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Отмена") } }
     )
 }
