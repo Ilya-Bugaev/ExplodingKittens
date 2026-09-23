@@ -6,17 +6,13 @@ import app.validator.IMoveValidator
 import domain.Card
 import domain.CardType
 import domain.Game
+import domain.GameState
 import domain.Move
 import domain.MoveType
 import domain.Player
 import domain.endsTurn
 import kotlin.random.Random
 
-/*
-Оркестратор партий. Хранит активные игры в памяти, валидирует ходы
-и применяет их эффекты. На шаге 2 - только in-memory; на шаге 4
-добавится сохранение через IHistoryRepository.
-*/
 class GameplayService(
     private val validator: IMoveValidator,
     private val playerRegistry: PlayerRegistryService,
@@ -27,8 +23,9 @@ class GameplayService(
     private var nextGameId: Int = 1
 
     /*
-    Создаёт новую партию. Регистрирует игроков в реестре (если ещё не там),
-    создаёт Game и возвращает его id.
+    Создаёт новую партию. Регистрирует игроков, синхронизирует
+    nextGameId с существующей историей (чтобы не перезаписывать
+    партии из прошлых сессий), возвращает id.
     */
     fun startGame(playerNames: List<String>, random: Random = Random.Default): Int {
         require(playerNames.size in 2..5) {
@@ -36,10 +33,8 @@ class GameplayService(
         }
         playerNames.forEach { playerRegistry.registerPlayer(it) }
 
-        // Продолжить нумерацию с максимального id в истории,
-        // чтобы не перезаписывать существующие партии
         historyService?.let {
-            val maxExisting = it.getAllFinishedGames().maxOfOrNull { it.gameId } ?: 0
+            val maxExisting = it.getAllFinishedGames().maxOfOrNull { s -> s.gameId } ?: 0
             if (maxExisting >= nextGameId) {
                 nextGameId = maxExisting + 1
             }
@@ -52,12 +47,7 @@ class GameplayService(
     }
 
     /*
-    Обрабатывает ход. Валидирует, применяет эффект, обновляет состояние.
-    Возвращает результат валидации:
-      - Rejected - ход отклонён;
-      - Accepted - ход применён;
-      - AwaitingNope - ход отложен, открыто окно Nope;
-      - AwaitingResponse - ход отложен, ждём ответа игрока.
+    Обрабатывает ход: валидирует, применяет эффект, обновляет состояние.
     */
     fun playMove(gameId: Int, move: Move): ValidationResult {
         val game = games[gameId]
@@ -69,7 +59,6 @@ class GameplayService(
             is ValidationResult.Accepted -> {
                 applyEffect(game, result.move)
 
-                // Если DRAW привёл к выбыванию автора - отметить в Move
                 val eliminated = result.move.type == MoveType.DRAW &&
                         result.move.author?.isAlive == false
                 val storedMove = if (eliminated) result.move.copy(eliminated = true) else result.move
@@ -106,8 +95,9 @@ class GameplayService(
     }
 
     /*
-    Закрывает окно Nope. Если последний pendingMove - это NOPE,
-    действие отменяется. Иначе - эффект применяется.
+    Закрывает окно Nope. Все карты цепочки (NOPE и оригинал) уходят
+    в сброс. Если NOPE сыграно нечётное число раз — оригинал отменён,
+    эффект не применяется. Если чётное — эффект применяется.
     */
     fun resolveNopeWindow(gameId: Int): ValidationResult {
         val game = games[gameId]
@@ -117,11 +107,23 @@ class GameplayService(
         if (chain.isEmpty()) {
             return ValidationResult.Rejected(listOf("no pending move"))
         }
-
         game.clearPendingMove()
 
-        val nopeCount = chain.count { move ->
-            move.cardsPlayed.singleOrNull()?.type == CardType.NOPE
+        val nopeCount = chain.count { m ->
+            m.cardsPlayed.singleOrNull()?.type == CardType.NOPE
+        }
+
+        // Все карты цепочки уходят из рук в сброс, ходы попадают в историю.
+        // Идём в хронологическом порядке — от оригинала к последнему NOPE.
+        chain.reversed().forEach { m ->
+            m.author?.let { author ->
+                m.cardsPlayed.forEach { card ->
+                    if (author.removeCard(card)) {
+                        game.discardPile.add(card)
+                    }
+                }
+            }
+            game.addMove(m)
         }
 
         if (nopeCount % 2 == 1) {
@@ -129,8 +131,7 @@ class GameplayService(
         }
 
         val original = chain.last()
-        applyEffect(game, original)
-        game.addMove(original)
+        applyEffectOnly(game, original)
         when {
             game.isFinished() -> {
                 game.finish()
@@ -142,6 +143,24 @@ class GameplayService(
         return ValidationResult.Accepted(original)
     }
 
+    fun endGame(gameId: Int): Boolean {
+        val game = games[gameId] ?: return false
+        if (game.state == GameState.FINISHED) return false
+        game.finish()
+        persistFinishedGame(game)
+        return true
+    }
+
+    fun getCurrentGame(gameId: Int): Game? = games[gameId]
+
+    fun getActiveGameIds(): Set<Int> = games.keys.toSet()
+
+    // ===================== Приватные помощники =====================
+
+    /*
+    Собирает цепочку ходов от последнего pendingMove до исходного.
+    Возвращает [последний NOPE, ..., исходный ход].
+    */
     private fun collectNopeChain(game: Game): List<Move> {
         val chain = mutableListOf<Move>()
         var current: Move? = game.pendingMove
@@ -152,28 +171,13 @@ class GameplayService(
         return chain
     }
 
-    fun endGame(gameId: Int): Boolean {
-        val game = games[gameId] ?: return false
-        if (game.state == domain.GameState.FINISHED) return false
-        game.finish()
-        persistFinishedGame(game)
-        return true
-    }
-
-    fun getCurrentGame(gameId: Int): Game? = games[gameId]
-
-    fun getActiveGameIds(): Set<Int> = games.keys.toSet()
-
-    /*
-    Определяет, является ли ход розыгрышем карты ATTACK.
-    */
     private fun isAttackMove(move: Move): Boolean =
         move.type == MoveType.PLAY_CARD &&
                 move.cardsPlayed.singleOrNull()?.type == CardType.ATTACK
 
     /*
     Сохраняет завершённую партию в историю и обновляет статистику.
-    Если сервисы не подключены - no-op.
+    No-op если сервисы не подключены.
     */
     private fun persistFinishedGame(game: Game) {
         historyService?.saveGame(game)
@@ -181,7 +185,8 @@ class GameplayService(
     }
 
     /*
-    Применяет эффект хода к партии.
+    Применяет эффект хода и перемещает карты из руки в сброс.
+    Используется в обычном потоке playMove → Accepted.
     */
     private fun applyEffect(game: Game, move: Move) {
         when (move.type) {
@@ -196,21 +201,49 @@ class GameplayService(
     }
 
     /*
-    Применяет немедленную часть эффекта хода, ожидающего ответа.
-    Для FAVOR - карта уходит из руки в сброс сразу.
+    Применяет только эффект хода, без перемещения карт из руки в сброс.
+    Используется в resolveNopeWindow — там карты цепочки уже сброшены.
     */
-    private fun applyImmediateEffect(game: Game, move: Move) {
-        val author = move.author ?: return
-        move.cardsPlayed.forEach {
-            author.removeCard(it)
-            game.discardPile.add(it)
+    private fun applyEffectOnly(game: Game, move: Move) {
+        if (move.type != MoveType.PLAY_CARD) {
+            applyEffect(game, move)
+            return
+        }
+        val card = move.cardsPlayed.singleOrNull() ?: return
+        when (card.type) {
+            CardType.SHUFFLE -> game.deck.shuffle()
+            CardType.SEE_FUTURE -> game.setLastPeekedCards(game.deck.peekTop(3))
+            CardType.ATTACK -> Unit  // эффект через advanceTurn(forAttack = true)
+            CardType.SKIP -> Unit
+            CardType.DEFUSE -> {
+                val kitten = game.pendingKitten
+                if (kitten != null) {
+                    val position = move.placedKittenPosition ?: 0
+                    game.deck.insertCardAt(position, kitten)
+                    game.clearPendingKitten()
+                }
+            }
+            else -> Unit
         }
     }
 
     /*
-    Взятие карты. Если выпал Exploding Kitten:
-      - с DEFUSE в руке - ждём розыгрыша DEFUSE (pendingKitten);
-      - без DEFUSE - игрок выбывает немедленно.
+    Для FAVOR: карта уходит из руки в сброс сразу, но передача
+    приходит позже через RESOLVE_PENDING.
+    */
+    private fun applyImmediateEffect(game: Game, move: Move) {
+        val author = move.author ?: return
+        move.cardsPlayed.forEach {
+            if (author.removeCard(it)) {
+                game.discardPile.add(it)
+            }
+        }
+    }
+
+    /*
+    DRAW. Если выпал Exploding Kitten:
+      - с DEFUSE в руке — ждём DEFUSE через pendingKitten;
+      - без DEFUSE — игрок выбывает немедленно.
     */
     private fun applyDraw(game: Game, move: Move) {
         val author = move.author ?: return
@@ -227,8 +260,8 @@ class GameplayService(
     }
 
     /*
-    Выбывание игрока, вытянувшего Exploding Kitten без DEFUSE.
-    Карты руки и котёнок уходят в сброс. pendingKitten не выставляется.
+    Выбывание игрока, вытянувшего котёнка без DEFUSE.
+    Карты руки и котёнок уходят в сброс.
     */
     private fun eliminatePlayer(game: Game, player: Player, kitten: Card) {
         player.hand.toList().forEach { card ->
@@ -240,25 +273,20 @@ class GameplayService(
         game.clearPendingKitten()
     }
 
+    /*
+    PLAY_CARD, применённый немедленно (без окна Nope).
+    Сюда попадает DEFUSE. ATTACK/SKIP/SHUFFLE/SEE_FUTURE идут через
+    resolveNopeWindow и applyEffectOnly.
+    */
     private fun applyPlayCard(game: Game, move: Move) {
         val author = move.author ?: return
         val card = move.cardsPlayed.singleOrNull() ?: return
-        author.removeCard(card)
+        if (author.removeCard(card)) {
+            game.discardPile.add(card)
+        }
 
         when (card.type) {
-            CardType.SKIP -> game.discardPile.add(card)
-            CardType.SHUFFLE -> {
-                game.discardPile.add(card)
-                game.deck.shuffle()
-            }
-            CardType.SEE_FUTURE -> {
-                game.discardPile.add(card)
-                val peeked = game.deck.peekTop(3)
-                game.setLastPeekedCards(peeked)
-            }
-            CardType.ATTACK -> game.discardPile.add(card)
             CardType.DEFUSE -> {
-                game.discardPile.add(card)
                 val kitten = game.pendingKitten
                 if (kitten != null) {
                     val position = move.placedKittenPosition ?: 0
@@ -266,9 +294,7 @@ class GameplayService(
                     game.clearPendingKitten()
                 }
             }
-            CardType.NOPE -> game.discardPile.add(card)
-            CardType.FAVOR -> game.discardPile.add(card)
-            else -> game.discardPile.add(card)
+            else -> Unit
         }
     }
 
@@ -293,10 +319,6 @@ class GameplayService(
         author.addCard(stolen)
     }
 
-    /*
-    Пять разных: взять из сброса выбранную карту.
-    Если receivedCard не задан - берётся верхняя.
-    */
     private fun applyFiveDifferent(game: Game, move: Move) {
         val author = move.author ?: return
         move.cardsPlayed.forEach { author.removeCard(it); game.discardPile.add(it) }
@@ -309,8 +331,7 @@ class GameplayService(
 
     /*
     RESOLVE_PENDING: цель FAVOR отдаёт карту. Карта уходит из её руки
-    в руку автора FAVOR. Отложенный ход добавляется в историю,
-    pendingMove сбрасывается.
+    в руку автора FAVOR. Отложенный ход добавляется в историю.
     */
     private fun applyResolvePending(game: Game, move: Move) {
         val responder = move.author ?: return
