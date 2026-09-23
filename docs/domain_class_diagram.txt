@@ -1,0 +1,126 @@
+@startuml
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+title Взрывные котята — Предметная Диаграмма Классов
+
+' ================= ПЕРЕЧИСЛЕНИЯ =================
+enum CardType {
+    EXPLODING_KITTEN
+    DEFUSE
+    NOPE
+    ATTACK
+    SKIP
+    FAVOR
+    SHUFFLE
+    SEE_FUTURE
+    CAT_BEARD
+    CAT_TACO
+    CAT_HAIRY_POTATO
+    CAT_CATERMELON
+    CAT_RAINBOW_RALPHING
+}
+
+
+enum MoveType {
+    START
+    DRAW
+    PLAY_CARD
+    PLAY_TWO_OF_A_KIND
+    PLAY_THREE_OF_A_KIND
+    PLAY_FIVE_DIFFERENT
+    RESOLVE_PENDING
+}
+
+enum GameState {
+    SETUP
+    IN_PROGRESS
+    FINISHED
+}
+
+' ================= КАРТА =================
+class Card {
+    +id: Int
+    +type: CardType
+}
+
+' ================= ИГРОК =================
+class Player {
+    +id: Int
+    +name: String
+    +isAlive: Boolean
+    +addCard(card: Card): Unit
+    +removeCard(card: Card): Unit
+    +hasCardOfType(type: CardType): Boolean
+    +findCardsOfType(type: CardType): List<Card>
+    +eliminate(): Unit
+}
+
+' ================= КОЛОДА И СБРОС =================
+class Deck {
+    +shuffle(): Unit
+    +draw(): Card
+    +peekTop(amount: Int): List<Card>
+    +insertCardAt(position: Int, card: Card): Unit
+    +insertCardAtTop(card: Card): Unit
+    +size(): Int
+    +isEmpty(): Boolean
+}
+
+class DiscardPile {
+    +add(card: Card): Unit
+    +addAll(cards: List<Card>): Unit
+    +takeAnyCard(): Card?
+    +takeCardOfType(type: CardType): Card?
+    +size(): Int
+}
+
+' ================= ХОД =================
+class Move {
+    +id: Int
+    +turnNumber: Int
+    +timestamp: DateTime
+    +type: MoveType
+    +cardsPlayed: List<Card>
+    +drawnCard: Card?
+    +receivedCard: Card?
+    +requestedCardType: CardType?
+    +placedKittenPosition: Int?
+    +eliminated: Boolean
+    +initialHands: Map<Int, List<Card>>?
+    +initialDeckOrder: List<Card>?
+}
+
+' ================= ПАРТИЯ =================
+class Game {
+    +id: Int
+    +state: GameState
+    +currentTurnIndex: Int
+    +turnsPlayed: Int
+    +attacksPending: Int
+    +eliminationOrder: List<Player>
+    +startGame(playerNames: List<String>): Unit
+    +getCurrentPlayer(): Player
+    +getAlivePlayers(): List<Player>
+    +isFinished(): Boolean
+    +finish(): Unit
+}
+
+' ================= СВЯЗИ =================
+Game "1" *-- "2..5" Player : участники
+Game "1" *-- "1" Deck : колода добора
+Game "1" *-- "1" DiscardPile : сброс
+Game "1" *-- "0..*" Move : история ходов
+
+Player "1" o-- "0..*" Card : рука
+Deck "1" o-- "0..*" Card : карты в колоде
+DiscardPile "1" o-- "0..*" Card : сброшенные карты
+
+Move "0..*" --> "0..1" Player : автор
+Move "0..*" --> "0..1" Player : цель
+Move "0..1" --> "1" Move : отменяет
+
+Game "1" --> "0..1" Player : победитель
+Game "1" --> "0..1" Move : ожидает разрешения (окно Nope / ответ игрока)
+Game "1" --> "0..1" Card : ожидает обезвреживания
+
+@enduml

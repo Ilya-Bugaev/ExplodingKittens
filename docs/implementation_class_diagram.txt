@@ -1,0 +1,191 @@
+@startuml
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+title Взрывные котята — Программная Диаграмма
+
+' ================= 1. ИНФРАСТРУКТУРА (Хранение) =================
+interface IHistoryRepository {
+  +saveGame(game: Game): void
+  +saveMove(gameId: Int, move: Move): void
+  +getHistory(gameId: Int): List<Move>
+  +getAllFinishedGames(): List<GameSummary>
+}
+
+interface IStatisticsRepository {
+  +getPlayerStats(playerId: Int): PlayerStats
+  +getAllPlayerStats(): List<PlayerStats>
+  +updateStats(stats: PlayerStats): void
+}
+
+interface IPlayerRepository {
+  +getKnownPlayerNames(): List<String>
+  +registerPlayer(name: String): Int
+  +findPlayerId(name: String): Int?
+}
+
+class SqlHistoryRepository
+class SqlStatisticsRepository
+class SqlPlayerRepository
+
+' ================= 2. ЛОГИКА: ВАЛИДАЦИЯ =================
+interface IMoveValidator {
+  +validate(game: Game, move: Move): ValidationResult
+}
+
+class EKMoveValidator
+
+' ================= 3. ЛОГИКА: РЕЗУЛЬТАТ ХОДА =================
+abstract class ValidationResult
+class Accepted {
+  +move: Move
+}
+class Rejected {
+  +errors: List<String>
+}
+class AwaitingNope {
+  +pendingMove: Move
+}
+class AwaitingResponse {
+  +pendingMove: Move
+  +responderId: Int
+}
+ValidationResult <|-- Accepted
+ValidationResult <|-- Rejected
+ValidationResult <|-- AwaitingNope
+ValidationResult <|-- AwaitingResponse
+
+' ================= 4. ЛОГИКА: СЕРВИСЫ =================
+class GameplayService {
+  -historyRepo: IHistoryRepository
+  -validator: IMoveValidator
+  -playerRegistry: PlayerRegistryService
+  -statistics: StatisticsService
+  +startGame(playerNames: List<String>): Int
+  +playMove(move: Move): ValidationResult
+  +resolveNopeWindow(gameId: Int): ValidationResult
+  +endGame(gameId: Int): void
+  +getCurrentGame(gameId: Int): Game
+}
+GameplayService --> IHistoryRepository : сохраняет партии и ходы
+GameplayService --> IMoveValidator : проверяет правила ходов
+GameplayService --> PlayerRegistryService : регистрирует игроков партии
+GameplayService --> StatisticsService : обновляет статистику по завершении
+GameplayService ..> ValidationResult : возвращает результат хода
+
+class PlayerRegistryService {
+  -repo: IPlayerRepository
+  +getKnownPlayerNames(): List<String>
+  +registerPlayer(name: String): Int
+  +findPlayerId(name: String): Int?
+}
+PlayerRegistryService --> IPlayerRepository
+
+class HistoryService {
+  -repo: IHistoryRepository
+  +getHistory(gameId: Int): List<Move>
+  +getAllFinishedGames(): List<GameSummary>
+}
+HistoryService --> IHistoryRepository : читает историю
+HistoryService ..> GameSummary : формирует сводку партии
+
+class StatisticsService {
+  -repo: IStatisticsRepository
+  +getLeaderboard(): List<PlayerStats>
+  +getPlayerStats(playerId: Int): PlayerStats
+  +getAllPlayerStats(): List<PlayerStats>
+  +updateStats(gameSummary: GameSummary): void
+  -mergeStats(current: PlayerStats, gameSummary: GameSummary): PlayerStats
+}
+StatisticsService --> IStatisticsRepository : читает текущий PlayerStats,\nпишет пересчитанный PlayerStats
+StatisticsService ..> PlayerStats
+
+' ================= 5. DTO =================
+class GameSummary {
+  +gameId: Int
+  +date: DateTime
+  +players: List<String>
+  +winner: String
+  +turns: Int
+}
+
+class PlayerStats {
+  +playerId: Int
+  +name: String
+  +wins: Int
+  +gamesPlayed: Int
+  +winRate: Double
+  +rating: Double
+}
+
+' ================= 6. REPLAY =================
+class ReplaySystem {
+  -repo: IHistoryRepository
+  -moves: List<Move>
+  -currentStep: Int
+  -shadowGame: Game
+  +loadGame(gameId: Int): void
+  +nextStep(): Move?
+  +previousStep(): Move?
+  +getCurrentState(): Game
+  +isFinished(): Boolean
+}
+ReplaySystem --> IHistoryRepository : загружает историю ходов
+ReplaySystem ..> Game : создаёт теневую копию
+
+' ================= 7. UI: ИНТЕРФЕЙСЫ ЭКРАНОВ =================
+interface IGameScreen {
+  +initGame(playerNames: List<String>): void
+  +onMoveSubmitted(move: Move): void
+  +onResolveNopeWindow(): void
+  +showAwaitingNope(pendingMove: Move): void
+  +showAwaitingResponse(pendingMove: Move, responderId: Int): void
+  +showError(message: String): void
+  +updateState(game: Game): void
+}
+
+interface IHistoryScreen {
+  +loadHistory(): void
+  +startReplay(gameId: Int): void
+  +nextStep(): void
+  +previousStep(): void
+}
+
+interface ILeaderboardScreen {
+  +loadLeaderboard(): void
+  +showTopPlayers(): void
+}
+
+' ================= 8. UI: КОНСОЛЬНЫЙ БАЗИС =================
+abstract class ConsoleBaseScreen {
+  -scanner: Scanner
+  +readLine(): String
+  +readInt(): Int
+  +print(message: String): void
+  +printLine(message: String): void
+  +clearScreen(): void
+}
+
+class ConsoleGameScreen
+class ConsoleHistoryScreen
+class ConsoleLeaderboardScreen
+
+' ================= СВЯЗИ: ЭКРАНЫ =================
+IGameScreen --> GameplayService : отправляет ходы, закрывает окно Nope
+IHistoryScreen --> HistoryService : запрашивает историю
+IHistoryScreen --> ReplaySystem : управляет воспроизведением
+ILeaderboardScreen --> StatisticsService : запрашивает лидерборд
+
+' ================= РЕАЛИЗАЦИИ =================
+IHistoryRepository <|-- SqlHistoryRepository
+IStatisticsRepository <|-- SqlStatisticsRepository
+IPlayerRepository <|-- SqlPlayerRepository
+IMoveValidator <|-- EKMoveValidator
+IGameScreen <|-- ConsoleGameScreen
+IHistoryScreen <|-- ConsoleHistoryScreen
+ILeaderboardScreen <|-- ConsoleLeaderboardScreen
+
+ConsoleBaseScreen <|-- ConsoleGameScreen
+ConsoleBaseScreen <|-- ConsoleHistoryScreen
+ConsoleBaseScreen <|-- ConsoleLeaderboardScreen
+
+@enduml
