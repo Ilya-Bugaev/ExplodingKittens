@@ -39,9 +39,6 @@ jobs:
       - name: Build and test
         run: ./gradlew build
 
-      - name: Run application
-        run: ./gradlew run
-
       - name: Upload test results
         uses: actions/upload-artifact@v4
         if: always()
