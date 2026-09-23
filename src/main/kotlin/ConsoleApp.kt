@@ -2,9 +2,10 @@ import app.service.GameplayService
 import app.service.HistoryService
 import app.service.PlayerRegistryService
 import app.service.StatisticsService
-import app.storage.JsonHistoryRepository
-import app.storage.JsonPlayerRepository
-import app.storage.JsonStatisticsRepository
+import app.storage.sql.Database
+import app.storage.sql.SqlHistoryRepository
+import app.storage.sql.SqlPlayerRepository
+import app.storage.sql.SqlStatisticsRepository
 import app.validator.EKMoveValidator
 import ui.console.ConsoleGameScreen
 import java.io.File
@@ -15,18 +16,15 @@ import java.io.File
 */
 fun runConsoleApp() {
     val dataDir = File("data").apply { mkdirs() }
+    val database = Database.open(File(dataDir, "tracker.db"))
 
-    val playerRepo = JsonPlayerRepository(File(dataDir, "players.json"))
-    val historyRepo = JsonHistoryRepository(File(dataDir, "history.json"))
-    val statsRepo = JsonStatisticsRepository(File(dataDir, "stats.json"))
-
-    val registry = PlayerRegistryService(playerRepo)
-    val history = HistoryService(historyRepo)
-    val stats = StatisticsService(statsRepo, registry)
-
-    val validator = EKMoveValidator()
-    val gameplay = GameplayService(validator, registry, history, stats)
+    val registry = PlayerRegistryService(SqlPlayerRepository(database))
+    val history = HistoryService(SqlHistoryRepository(database))
+    val stats = StatisticsService(SqlStatisticsRepository(database), registry)
+    val gameplay = GameplayService(EKMoveValidator(), registry, history, stats)
 
     val screen = ConsoleGameScreen(gameplay, registry)
     screen.start()
+
+    database.close()
 }
