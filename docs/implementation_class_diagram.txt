@@ -35,11 +35,6 @@ interface IMoveValidator {
 class EKMoveValidator
 
 ' ================= 3. ЛОГИКА: РЕЗУЛЬТАТ ХОДА =================
-' ИСПРАВЛЕНО: AwaitingNope возвращён — окно Nope является частью правил
-' игры, а не деталью реализации, которую можно было опустить.
-' AwaitingNope отличается от AwaitingResponse: ответить Nope может
-' ЛЮБОЙ игрок (нет конкретного responderId), а на Favor/тройку отвечает
-' только один конкретный игрок.
 abstract class ValidationResult
 class Accepted {
   +move: Move

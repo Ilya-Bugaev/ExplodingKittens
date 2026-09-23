@@ -20,8 +20,7 @@ enum CardType {
     CAT_RAINBOW_RALPHING
 }
 
-' ИСПРАВЛЕНО: добавлен START — системное событие первичной раздачи,
-' без него ReplaySystem не знает начальное состояние партии.
+
 enum MoveType {
     START
     DRAW
