@@ -280,10 +280,10 @@ class Game(val id: Int) {
     }
 
     /*
-Возвращает снимок начального расклада для синхронизации физического стола:
-руки всех игроков и порядок карт в колоде.
-Вызывается после startGame, чтобы ведущий разложил карты за столом.
-*/
+    Возвращает снимок начального расклада для синхронизации физического стола:
+    руки всех игроков и порядок карт в колоде.
+    Вызывается после startGame, чтобы ведущий разложил карты за столом.
+    */
     fun getInitialSetup(): String {
         val startMove = moves.firstOrNull { it.type == MoveType.START }
             ?: return "Партия ещё не начата"
@@ -298,5 +298,16 @@ class Game(val id: Int) {
             sb.appendLine("  ${index + 1}. ${card.type.displayName}")
         }
         return sb.toString()
+    }
+
+    var lastPeekedCards: List<Card>? = null
+        private set
+
+    fun setLastPeekedCards(cards: List<Card>) {
+        lastPeekedCards = cards
+    }
+
+    fun clearLastPeekedCards() {
+        lastPeekedCards = null
     }
 }

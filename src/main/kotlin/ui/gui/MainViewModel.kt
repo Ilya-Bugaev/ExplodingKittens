@@ -371,6 +371,7 @@ class MainViewModel(
             } else null
         }
 
+        val peekedCards = game.lastPeekedCards?.map { it.toView() }
         return UiState(
             gameId = game.id,
             state = game.state.name,
@@ -395,7 +396,8 @@ class MainViewModel(
             registeredPlayers = registeredPlayers,
             discardPile = game.discardPile.peekAll().map { it.toView() },
             awaitingFavorResponse = awaitingFavor,
-            awaitingNope = awaitingNope
+            awaitingNope = awaitingNope,
+            peekedCards = peekedCards
         )
     }
 
@@ -413,5 +415,11 @@ class MainViewModel(
         val card = pending.cardsPlayed.singleOrNull()
         val cardName = card?.type?.displayName ?: pending.type.name
         return "$author сыграл $cardName"
+    }
+
+    fun dismissPeekedCards() {
+        val id = activeGameId ?: return
+        gameplay.getCurrentGame(id)?.clearLastPeekedCards()
+        refreshState()
     }
 }

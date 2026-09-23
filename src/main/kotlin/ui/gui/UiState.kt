@@ -2,6 +2,7 @@ package ui.gui
 
 /*
 Снимок состояния партии для отображения в GUI.
+Плоский DTO: никаких ссылок на домен, только примитивы и строки.
 */
 data class UiState(
     val gameId: Int? = null,
@@ -17,10 +18,11 @@ data class UiState(
     val winnerName: String? = null,
     val currentHand: List<CardView> = emptyList(),
     val registeredPlayers: List<String> = emptyList(),
-    val errorMessage: String? = null,
     val discardPile: List<CardView> = emptyList(),
     val awaitingFavorResponse: FavorResponseInfo? = null,
-    val awaitingNope: NopeInfo? = null
+    val awaitingNope: NopeInfo? = null,
+    val peekedCards: List<CardView>? = null,
+    val errorMessage: String? = null
 )
 
 data class PlayerView(
@@ -37,12 +39,18 @@ data class CardView(
     val displayName: String
 )
 
+/*
+Информация об ожидании ответа на FAVOR.
+*/
 data class FavorResponseInfo(
     val responderId: Int,
     val responderName: String,
     val responderHand: List<CardView>
 )
 
+/*
+Информация об открытом окне Nope.
+*/
 data class NopeInfo(
     val pendingMoveDescription: String,
     val eligiblePlayers: List<EligibleNopePlayer>

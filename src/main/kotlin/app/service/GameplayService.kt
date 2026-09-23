@@ -242,7 +242,11 @@ class GameplayService(
                 game.discardPile.add(card)
                 game.deck.shuffle()
             }
-            CardType.SEE_FUTURE -> game.discardPile.add(card)
+            CardType.SEE_FUTURE -> {
+                game.discardPile.add(card)
+                val peeked = game.deck.peekTop(3)
+                game.setLastPeekedCards(peeked)
+            }
             CardType.ATTACK -> game.discardPile.add(card)
             CardType.DEFUSE -> {
                 game.discardPile.add(card)

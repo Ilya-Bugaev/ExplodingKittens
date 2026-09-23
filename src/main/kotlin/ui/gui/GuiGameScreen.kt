@@ -254,6 +254,12 @@ fun GuiGameScreen(viewModel: MainViewModel) {
             onDecline = { viewModel.declineNope() }
         )
     }
+    state.peekedCards?.let { cards ->
+        PeekedCardsDialog(
+            cards = cards,
+            onDismiss = { viewModel.dismissPeekedCards() }
+        )
+    }
 }
 
 @Composable
@@ -672,6 +678,32 @@ private fun NopeDialog(
         },
         confirmButton = {
             TextButton(onClick = onDecline) { Text("Никто не играет") }
+        },
+        dismissButton = {}
+    )
+}
+
+@Composable
+private fun PeekedCardsDialog(
+    cards: List<CardView>,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Верхние 3 карты колоды") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                if (cards.isEmpty()) {
+                    Text("Колода пуста.")
+                } else {
+                    cards.forEachIndexed { index, card ->
+                        Text("${index + 1}. ${card.displayName}")
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text("Закрыть") }
         },
         dismissButton = {}
     )
