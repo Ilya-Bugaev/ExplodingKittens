@@ -22,7 +22,8 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun GuiApp(
     gameViewModel: MainViewModel,
-    historyViewModel: HistoryViewModel
+    historyViewModel: HistoryViewModel,
+    leaderboardViewModel: LeaderboardViewModel
 ) {
     var screen by remember { mutableStateOf(AppScreen.GAME) }
 
@@ -41,11 +42,20 @@ fun GuiApp(
                     screen = AppScreen.HISTORY
                 }
             )
+            NavButton(
+                label = "Лидеры",
+                selected = screen == AppScreen.LEADERBOARD,
+                onClick = {
+                    leaderboardViewModel.refresh()
+                    screen = AppScreen.LEADERBOARD
+                }
+            )
         }
 
         when (screen) {
             AppScreen.GAME -> GuiGameScreen(gameViewModel)
             AppScreen.HISTORY -> GuiHistoryScreen(historyViewModel)
+            AppScreen.LEADERBOARD -> GuiLeaderboardScreen(leaderboardViewModel)
         }
     }
 }

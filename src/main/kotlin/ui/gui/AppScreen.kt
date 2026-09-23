@@ -5,5 +5,6 @@ package ui.gui
 */
 enum class AppScreen {
     GAME,
-    HISTORY
+    HISTORY,
+    LEADERBOARD
 }

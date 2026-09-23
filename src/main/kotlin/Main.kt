@@ -13,6 +13,7 @@ import app.validator.EKMoveValidator
 import ui.gui.GuiApp
 import ui.gui.GuiGameScreen
 import ui.gui.HistoryViewModel
+import ui.gui.LeaderboardViewModel
 import ui.gui.MainViewModel
 import java.io.File
 
@@ -37,6 +38,7 @@ fun main(args: Array<String>) {
 
     val gameViewModel = MainViewModel(gameplay, registry)
     val historyViewModel = HistoryViewModel(history)
+    val leaderboardViewModel = LeaderboardViewModel(stats)
 
     application {
         Window(
@@ -44,7 +46,7 @@ fun main(args: Array<String>) {
             title = "Exploding Kittens Tracker"
         ) {
             MaterialTheme {
-                GuiApp(gameViewModel, historyViewModel)
+                GuiApp(gameViewModel, historyViewModel, leaderboardViewModel)
             }
         }
     }
