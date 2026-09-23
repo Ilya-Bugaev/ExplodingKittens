@@ -13,14 +13,16 @@ data class MoveRecord(
     val id: Int,
     val turnNumber: Int,
     val type: String,
-    val authorId: Int? = null,
-    val targetId: Int? = null,
+    val authorName: String? = null,
+    val targetName: String? = null,
     val cardsPlayed: List<CardRecord> = emptyList(),
     val drawnCard: CardRecord? = null,
     val receivedCard: CardRecord? = null,
     val requestedCardType: String? = null,
     val placedKittenPosition: Int? = null,
-    val eliminated: Boolean = false
+    val eliminated: Boolean = false,
+    val initialHands: Map<Int, List<CardRecord>>? = null,
+    val initialDeckOrder: List<CardRecord>? = null
 )
 
 @Serializable

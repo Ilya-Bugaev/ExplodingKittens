@@ -11,14 +11,16 @@ fun Move.toRecord(): MoveRecord = MoveRecord(
     id = id,
     turnNumber = turnNumber,
     type = type.name,
-    authorId = author?.id,
-    targetId = target?.id,
+    authorName = author?.name,
+    targetName = target?.name,
     cardsPlayed = cardsPlayed.map { it.toRecord() },
     drawnCard = drawnCard?.toRecord(),
     receivedCard = receivedCard?.toRecord(),
     requestedCardType = requestedCardType?.name,
     placedKittenPosition = placedKittenPosition,
-    eliminated = eliminated
+    eliminated = eliminated,
+    initialHands = initialHands?.mapValues { (_, cards) -> cards.map { it.toRecord() } },
+    initialDeckOrder = initialDeckOrder?.map { it.toRecord() }
 )
 
 fun Game.toRecord(): GameRecord = GameRecord(
