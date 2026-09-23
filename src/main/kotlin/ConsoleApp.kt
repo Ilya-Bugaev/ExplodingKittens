@@ -1,7 +1,3 @@
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.ui.window.Window
-import androidx.compose.ui.window.application
-import app.repository.InMemoryPlayerRepository
 import app.service.GameplayService
 import app.service.HistoryService
 import app.service.PlayerRegistryService
@@ -10,16 +6,14 @@ import app.storage.JsonHistoryRepository
 import app.storage.JsonPlayerRepository
 import app.storage.JsonStatisticsRepository
 import app.validator.EKMoveValidator
-import ui.gui.GuiGameScreen
-import ui.gui.MainViewModel
+import ui.console.ConsoleGameScreen
 import java.io.File
 
-fun main(args: Array<String>) {
-    if (args.contains("console")) {
-        runConsoleApp()
-        return
-    }
-
+/*
+Консольная точка входа. Запускается через Main с аргументом "console":
+./gradlew run --args="console"
+*/
+fun runConsoleApp() {
     val dataDir = File("data").apply { mkdirs() }
 
     val playerRepo = JsonPlayerRepository(File(dataDir, "players.json"))
@@ -29,18 +23,10 @@ fun main(args: Array<String>) {
     val registry = PlayerRegistryService(playerRepo)
     val history = HistoryService(historyRepo)
     val stats = StatisticsService(statsRepo, registry)
-    val gameplay = GameplayService(EKMoveValidator(), registry, history, stats)
 
-    val viewModel = MainViewModel(gameplay, registry)
+    val validator = EKMoveValidator()
+    val gameplay = GameplayService(validator, registry, history, stats)
 
-    application {
-        Window(
-            onCloseRequest = ::exitApplication,
-            title = "Exploding Kittens Tracker"
-        ) {
-            MaterialTheme {
-                GuiGameScreen(viewModel)
-            }
-        }
-    }
+    val screen = ConsoleGameScreen(gameplay, registry)
+    screen.start()
 }
