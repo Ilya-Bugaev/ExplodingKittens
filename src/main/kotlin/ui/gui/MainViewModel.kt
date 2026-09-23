@@ -118,6 +118,96 @@ class MainViewModel(
         return submitMove(move)
     }
 
+    /*
+FAVOR: сыграть FAVOR с указанием цели.
+*/
+    fun playFavor(cardId: Int, targetPlayerId: Int): ValidationResult {
+        val game = activeGame() ?: return noActiveGame()
+        val current = game.getCurrentPlayer()
+        val card = current.hand.firstOrNull { it.id == cardId }
+            ?: return ValidationResult.Rejected(listOf("карта не в руке"))
+        val target = game.players.firstOrNull { it.id == targetPlayerId }
+            ?: return ValidationResult.Rejected(listOf("цель не найдена"))
+
+        val move = domain.Move(
+            id = 0,
+            turnNumber = game.turnsPlayed + 1,
+            type = domain.MoveType.PLAY_CARD,
+            author = current,
+            target = target,
+            cardsPlayed = listOf(card)
+        )
+        return submitMove(move)
+    }
+
+    /*
+    Пара одинаковых карт: украсть случайную у цели.
+    */
+    fun playTwoOfAKind(cardIds: List<Int>, targetPlayerId: Int): ValidationResult {
+        val game = activeGame() ?: return noActiveGame()
+        val current = game.getCurrentPlayer()
+        val cards = cardIds.mapNotNull { id -> current.hand.firstOrNull { it.id == id } }
+        if (cards.size != 2) return ValidationResult.Rejected(listOf("нужно две карты"))
+        val target = game.players.firstOrNull { it.id == targetPlayerId }
+            ?: return ValidationResult.Rejected(listOf("цель не найдена"))
+
+        val move = domain.Move(
+            id = 0,
+            turnNumber = game.turnsPlayed + 1,
+            type = domain.MoveType.PLAY_TWO_OF_A_KIND,
+            author = current,
+            target = target,
+            cardsPlayed = cards
+        )
+        return submitMove(move)
+    }
+
+    /*
+    Тройка одинаковых: забрать у цели карту указанного типа.
+    */
+    fun playThreeOfAKind(
+        cardIds: List<Int>,
+        targetPlayerId: Int,
+        requestedType: domain.CardType
+    ): ValidationResult {
+        val game = activeGame() ?: return noActiveGame()
+        val current = game.getCurrentPlayer()
+        val cards = cardIds.mapNotNull { id -> current.hand.firstOrNull { it.id == id } }
+        if (cards.size != 3) return ValidationResult.Rejected(listOf("нужно три карты"))
+        val target = game.players.firstOrNull { it.id == targetPlayerId }
+            ?: return ValidationResult.Rejected(listOf("цель не найдена"))
+
+        val move = domain.Move(
+            id = 0,
+            turnNumber = game.turnsPlayed + 1,
+            type = domain.MoveType.PLAY_THREE_OF_A_KIND,
+            author = current,
+            target = target,
+            cardsPlayed = cards,
+            requestedCardType = requestedType
+        )
+        return submitMove(move)
+    }
+
+    /*
+    Пять разных: взять карту из сброса.
+    */
+    fun playFiveDifferent(cardIds: List<Int>): ValidationResult {
+        val game = activeGame() ?: return noActiveGame()
+        val current = game.getCurrentPlayer()
+        val cards = cardIds.mapNotNull { id -> current.hand.firstOrNull { it.id == id } }
+        if (cards.size != 5) return ValidationResult.Rejected(listOf("нужно пять карт"))
+
+        val move = domain.Move(
+            id = 0,
+            turnNumber = game.turnsPlayed + 1,
+            type = domain.MoveType.PLAY_FIVE_DIFFERENT,
+            author = current,
+            cardsPlayed = cards
+        )
+        return submitMove(move)
+    }
+
     private fun activeGame(): domain.Game? =
         activeGameId?.let { gameplay.getCurrentGame(it) }
 

@@ -3,12 +3,10 @@ package ui.gui
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
@@ -27,8 +25,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import domain.Move
-import domain.MoveType
 
 /*
 Игровой экран. Отображает UiState, отправляет команды в MainViewModel.
@@ -38,6 +34,7 @@ import domain.MoveType
 fun GuiGameScreen(viewModel: MainViewModel) {
     val state by viewModel.state.collectAsState()
     var showNewGameDialog by remember { mutableStateOf(false) }
+    var pendingFavorCardId by remember { mutableStateOf<Int?>(null) }
 
     Column(
         modifier = Modifier.fillMaxSize().padding(16.dp),
@@ -48,7 +45,13 @@ fun GuiGameScreen(viewModel: MainViewModel) {
 
         if (state.gameId != null) {
             GameStatus(state)
-            CurrentHand(state, viewModel)
+            CurrentHand(state) { card ->
+                if (card.type == "FAVOR") {
+                    pendingFavorCardId = card.id
+                } else {
+                    viewModel.playCard(card.id)
+                }
+            }
             ActionButtons(state, viewModel)
         } else {
             Text("Партия не начата.")
@@ -82,6 +85,18 @@ fun GuiGameScreen(viewModel: MainViewModel) {
             onDismiss = { showNewGameDialog = false },
             onConfirm = { names ->
                 if (viewModel.newGame(names)) showNewGameDialog = false
+            }
+        )
+    }
+
+    pendingFavorCardId?.let { cardId ->
+        TargetPickerDialog(
+            title = "Кому сыграть FAVOR?",
+            players = state.players.filter { it.isAlive && !it.isCurrent },
+            onDismiss = { pendingFavorCardId = null },
+            onPick = { targetId ->
+                viewModel.playFavor(cardId, targetId)
+                pendingFavorCardId = null
             }
         )
     }
@@ -142,7 +157,10 @@ private fun GameStatus(state: UiState) {
 }
 
 @Composable
-private fun CurrentHand(state: UiState, viewModel: MainViewModel) {
+private fun CurrentHand(
+    state: UiState,
+    onPlayCard: (CardView) -> Unit
+) {
     Text("Рука ${state.currentPlayerName}", style = MaterialTheme.typography.titleMedium)
     if (state.currentHand.isEmpty()) {
         Text("— рука пуста —")
@@ -162,7 +180,7 @@ private fun CurrentHand(state: UiState, viewModel: MainViewModel) {
                         text = "${card.displayName} (id=${card.id})",
                         modifier = Modifier.weight(1f)
                     )
-                    Button(onClick = { viewModel.playCard(card.id) }) {
+                    Button(onClick = { onPlayCard(card) }) {
                         Text("Сыграть")
                     }
                 }
@@ -233,6 +251,40 @@ private fun NewGameDialog(
                 Text("Начать")
             }
         },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Отмена") }
+        }
+    )
+}
+
+/*
+Универсальный диалог выбора целевого игрока. Используется для FAVOR,
+пар и троек.
+*/
+@Composable
+private fun TargetPickerDialog(
+    title: String,
+    players: List<PlayerView>,
+    onDismiss: () -> Unit,
+    onPick: (Int) -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                if (players.isEmpty()) {
+                    Text("Нет живых соперников.")
+                } else {
+                    players.forEach { player ->
+                        TextButton(onClick = { onPick(player.id) }) {
+                            Text(player.name)
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {},
         dismissButton = {
             TextButton(onClick = onDismiss) { Text("Отмена") }
         }
