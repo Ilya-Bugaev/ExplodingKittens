@@ -10,7 +10,9 @@ import app.storage.JsonHistoryRepository
 import app.storage.JsonPlayerRepository
 import app.storage.JsonStatisticsRepository
 import app.validator.EKMoveValidator
+import ui.gui.GuiApp
 import ui.gui.GuiGameScreen
+import ui.gui.HistoryViewModel
 import ui.gui.MainViewModel
 import java.io.File
 
@@ -33,13 +35,16 @@ fun main(args: Array<String>) {
 
     val viewModel = MainViewModel(gameplay, registry)
 
+    val gameViewModel = MainViewModel(gameplay, registry)
+    val historyViewModel = HistoryViewModel(history)
+
     application {
         Window(
             onCloseRequest = ::exitApplication,
             title = "Exploding Kittens Tracker"
         ) {
             MaterialTheme {
-                GuiGameScreen(viewModel)
+                GuiApp(gameViewModel, historyViewModel)
             }
         }
     }
