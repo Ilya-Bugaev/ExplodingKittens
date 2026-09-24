@@ -1,0 +1,46 @@
+package app.storage
+
+import app.dto.GameSummary
+import domain.Card
+import domain.Game
+import domain.Move
+
+fun Card.toRecord(): CardRecord = CardRecord(id = id, type = type.name)
+
+fun Move.toRecord(): MoveRecord = MoveRecord(
+    id = id,
+    turnNumber = turnNumber,
+    type = type.name,
+    authorName = author?.name,
+    targetName = target?.name,
+    cardsPlayed = cardsPlayed.map { it.toRecord() },
+    drawnCard = drawnCard?.toRecord(),
+    receivedCard = receivedCard?.toRecord(),
+    requestedCardType = requestedCardType?.name,
+    placedKittenPosition = placedKittenPosition,
+    eliminated = eliminated,
+    initialHands = initialHands?.mapValues { (_, cards) -> cards.map { it.toRecord() } },
+    initialDeckOrder = initialDeckOrder?.map { it.toRecord() }
+)
+
+fun Game.toRecord(): GameRecord = GameRecord(
+    gameId = id,
+    playerNames = players.map { it.name },
+    winnerName = winner?.name,
+    turnsPlayed = turnsPlayed,
+    moves = moves.map { it.toRecord() }
+)
+
+fun GameRecord.toSummary(): GameSummary = GameSummary(
+    gameId = gameId,
+    playerNames = playerNames,
+    winnerName = winnerName,
+    turnsPlayed = turnsPlayed
+)
+
+fun Game.toSummary(): GameSummary = GameSummary(
+    gameId = id,
+    playerNames = players.map { it.name },
+    winnerName = winner?.name,
+    turnsPlayed = turnsPlayed
+)
