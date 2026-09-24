@@ -44,4 +44,11 @@ class DiscardPile(initialCards: List<Card> = emptyList()) {
         val index = cards.indexOfFirst { it.type == type }
         return if (index >= 0) cards.removeAt(index) else null
     }
+
+    fun peekAll(): List<Card> = cards.toList()
+
+    fun takeCardById(id: Int): Card? {
+        val index = cards.indexOfFirst { it.id == id }
+        return if (index >= 0) cards.removeAt(index) else null
+    }
 }

@@ -60,6 +60,9 @@ class Game(val id: Int) {
     var pendingMove: Move? = null
         private set
 
+    var lastPeekedCards: List<Card>? = null
+        private set
+
     private var nextCardId: Int = 0
 
     /*
@@ -109,6 +112,14 @@ class Game(val id: Int) {
                 initialDeckOrder = initialDeckOrder
             )
         )
+    }
+
+    fun setLastPeekedCards(cards: List<Card>) {
+        lastPeekedCards = cards
+    }
+
+    fun clearLastPeekedCards() {
+        lastPeekedCards = null
     }
 
     fun getCurrentPlayer(): Player = _players[currentTurnIndex]
