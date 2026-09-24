@@ -1,0 +1,957 @@
+{
+    "games": [
+        {
+            "gameId": 2,
+            "playerNames": [
+                "a",
+                "b"
+            ],
+            "turnsPlayed": 2,
+            "moves": [
+                {
+                    "id": 1,
+                    "turnNumber": 0,
+                    "type": "START"
+                },
+                {
+                    "id": 2,
+                    "turnNumber": 1,
+                    "type": "DRAW",
+                    "authorId": 0
+                },
+                {
+                    "id": 3,
+                    "turnNumber": 2,
+                    "type": "PLAY_CARD",
+                    "authorId": 1,
+                    "cardsPlayed": [
+                        {
+                            "id": 27,
+                            "type": "SEE_FUTURE"
+                        }
+                    ]
+                },
+                {
+                    "id": 4,
+                    "turnNumber": 2,
+                    "type": "DRAW",
+                    "authorId": 1
+                },
+                {
+                    "id": 5,
+                    "turnNumber": 3,
+                    "type": "PLAY_TWO_OF_A_KIND",
+                    "authorId": 0,
+                    "targetId": 1,
+                    "cardsPlayed": [
+                        {
+                            "id": 40,
+                            "type": "CAT_HAIRY_POTATO"
+                        },
+                        {
+                            "id": 42,
+                            "type": "CAT_HAIRY_POTATO"
+                        }
+                    ]
+                },
+                {
+                    "id": 6,
+                    "turnNumber": 3,
+                    "type": "PLAY_CARD",
+                    "authorId": 0,
+                    "cardsPlayed": [
+                        {
+                            "id": 30,
+                            "type": "SEE_FUTURE"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "gameId": 1,
+            "playerNames": [
+                "a",
+                "b"
+            ],
+            "turnsPlayed": 4,
+            "moves": [
+                {
+                    "id": 1,
+                    "turnNumber": 0,
+                    "type": "START"
+                },
+                {
+                    "id": 2,
+                    "turnNumber": 1,
+                    "type": "PLAY_CARD",
+                    "authorId": 0,
+                    "cardsPlayed": [
+                        {
+                            "id": 12,
+                            "type": "ATTACK"
+                        }
+                    ]
+                },
+                {
+                    "id": 3,
+                    "turnNumber": 2,
+                    "type": "PLAY_CARD",
+                    "authorId": 1,
+                    "cardsPlayed": [
+                        {
+                            "id": 17,
+                            "type": "SKIP"
+                        }
+                    ]
+                },
+                {
+                    "id": 4,
+                    "turnNumber": 3,
+                    "type": "DRAW",
+                    "authorId": 1
+                },
+                {
+                    "id": 5,
+                    "turnNumber": 4,
+                    "type": "PLAY_CARD",
+                    "authorId": 0,
+                    "cardsPlayed": [
+                        {
+                            "id": 30,
+                            "type": "SEE_FUTURE"
+                        }
+                    ]
+                },
+                {
+                    "id": 6,
+                    "turnNumber": 4,
+                    "type": "DRAW",
+                    "authorId": 0
+                }
+            ]
+        },
+        {
+            "gameId": 3,
+            "playerNames": [
+                "a",
+                "b"
+            ],
+            "winnerName": "b",
+            "turnsPlayed": 35,
+            "moves": [
+                {
+                    "id": 1,
+                    "turnNumber": 0,
+                    "type": "START"
+                },
+                {
+                    "id": 2,
+                    "turnNumber": 1,
+                    "type": "PLAY_CARD",
+                    "authorId": 0,
+                    "cardsPlayed": [
+                        {
+                            "id": 11,
+                            "type": "ATTACK"
+                        }
+                    ]
+                },
+                {
+                    "id": 3,
+                    "turnNumber": 2,
+                    "type": "PLAY_CARD",
+                    "authorId": 1,
+                    "cardsPlayed": [
+                        {
+                            "id": 25,
+                            "type": "SHUFFLE"
+                        }
+                    ]
+                },
+                {
+                    "id": 4,
+                    "turnNumber": 2,
+                    "type": "DRAW",
+                    "authorId": 1
+                },
+                {
+                    "id": 5,
+                    "turnNumber": 3,
+                    "type": "DRAW",
+                    "authorId": 1
+                },
+                {
+                    "id": 6,
+                    "turnNumber": 4,
+                    "type": "DRAW",
+                    "authorId": 0
+                },
+                {
+                    "id": 7,
+                    "turnNumber": 5,
+                    "type": "DRAW",
+                    "authorId": 1
+                },
+                {
+                    "id": 8,
+                    "turnNumber": 6,
+                    "type": "PLAY_CARD",
+                    "authorId": 0,
+                    "cardsPlayed": [
+                        {
+                            "id": 24,
+                            "type": "SHUFFLE"
+                        }
+                    ]
+                },
+                {
+                    "id": 9,
+                    "turnNumber": 6,
+                    "type": "DRAW",
+                    "authorId": 0
+                },
+                {
+                    "id": 10,
+                    "turnNumber": 7,
+                    "type": "PLAY_CARD",
+                    "authorId": 1,
+                    "cardsPlayed": [
+                        {
+                            "id": 15,
+                            "type": "SKIP"
+                        }
+                    ]
+                },
+                {
+                    "id": 11,
+                    "turnNumber": 8,
+                    "type": "DRAW",
+                    "authorId": 0
+                },
+                {
+                    "id": 12,
+                    "turnNumber": 9,
+                    "type": "PLAY_CARD",
+                    "authorId": 1,
+                    "cardsPlayed": [
+                        {
+                            "id": 18,
+                            "type": "SKIP"
+                        }
+                    ]
+                },
+                {
+                    "id": 13,
+                    "turnNumber": 10,
+                    "type": "DRAW",
+                    "authorId": 0
+                },
+                {
+                    "id": 14,
+                    "turnNumber": 11,
+                    "type": "DRAW",
+                    "authorId": 1
+                },
+                {
+                    "id": 15,
+                    "turnNumber": 12,
+                    "type": "DRAW",
+                    "authorId": 0
+                },
+                {
+                    "id": 16,
+                    "turnNumber": 13,
+                    "type": "DRAW",
+                    "authorId": 1
+                },
+                {
+                    "id": 17,
+                    "turnNumber": 14,
+                    "type": "DRAW",
+                    "authorId": 0
+                },
+                {
+                    "id": 18,
+                    "turnNumber": 15,
+                    "type": "DRAW",
+                    "authorId": 1
+                },
+                {
+                    "id": 19,
+                    "turnNumber": 16,
+                    "type": "DRAW",
+                    "authorId": 0
+                },
+                {
+                    "id": 20,
+                    "turnNumber": 17,
+                    "type": "DRAW",
+                    "authorId": 1
+                },
+                {
+                    "id": 21,
+                    "turnNumber": 18,
+                    "type": "DRAW",
+                    "authorId": 0
+                },
+                {
+                    "id": 22,
+                    "turnNumber": 19,
+                    "type": "DRAW",
+                    "authorId": 1
+                },
+                {
+                    "id": 23,
+                    "turnNumber": 20,
+                    "type": "DRAW",
+                    "authorId": 0
+                },
+                {
+                    "id": 24,
+                    "turnNumber": 21,
+                    "type": "DRAW",
+                    "authorId": 1
+                },
+                {
+                    "id": 25,
+                    "turnNumber": 22,
+                    "type": "DRAW",
+                    "authorId": 0
+                },
+                {
+                    "id": 26,
+                    "turnNumber": 23,
+                    "type": "DRAW",
+                    "authorId": 1
+                },
+                {
+                    "id": 27,
+                    "turnNumber": 24,
+                    "type": "DRAW",
+                    "authorId": 0
+                },
+                {
+                    "id": 28,
+                    "turnNumber": 25,
+                    "type": "DRAW",
+                    "authorId": 1
+                },
+                {
+                    "id": 29,
+                    "turnNumber": 26,
+                    "type": "DRAW",
+                    "authorId": 0
+                },
+                {
+                    "id": 30,
+                    "turnNumber": 27,
+                    "type": "DRAW",
+                    "authorId": 1
+                },
+                {
+                    "id": 31,
+                    "turnNumber": 28,
+                    "type": "DRAW",
+                    "authorId": 0
+                },
+                {
+                    "id": 32,
+                    "turnNumber": 29,
+                    "type": "DRAW",
+                    "authorId": 1
+                },
+                {
+                    "id": 33,
+                    "turnNumber": 30,
+                    "type": "DRAW",
+                    "authorId": 0
+                },
+                {
+                    "id": 34,
+                    "turnNumber": 31,
+                    "type": "DRAW",
+                    "authorId": 1
+                },
+                {
+                    "id": 35,
+                    "turnNumber": 32,
+                    "type": "DRAW",
+                    "authorId": 0
+                },
+                {
+                    "id": 36,
+                    "turnNumber": 32,
+                    "type": "PLAY_CARD",
+                    "authorId": 0,
+                    "cardsPlayed": [
+                        {
+                            "id": 1,
+                            "type": "DEFUSE"
+                        }
+                    ],
+                    "placedKittenPosition": 0
+                },
+                {
+                    "id": 37,
+                    "turnNumber": 33,
+                    "type": "DRAW",
+                    "authorId": 1
+                },
+                {
+                    "id": 38,
+                    "turnNumber": 33,
+                    "type": "PLAY_CARD",
+                    "authorId": 1,
+                    "cardsPlayed": [
+                        {
+                            "id": 3,
+                            "type": "DEFUSE"
+                        }
+                    ],
+                    "placedKittenPosition": 0
+                },
+                {
+                    "id": 39,
+                    "turnNumber": 34,
+                    "type": "DRAW",
+                    "authorId": 0
+                },
+                {
+                    "id": 40,
+                    "turnNumber": 34,
+                    "type": "PLAY_CARD",
+                    "authorId": 0,
+                    "cardsPlayed": [
+                        {
+                            "id": 2,
+                            "type": "DEFUSE"
+                        }
+                    ],
+                    "placedKittenPosition": 0
+                },
+                {
+                    "id": 41,
+                    "turnNumber": 35,
+                    "type": "DRAW",
+                    "authorId": 1
+                },
+                {
+                    "id": 42,
+                    "turnNumber": 35,
+                    "type": "PLAY_CARD",
+                    "authorId": 1,
+                    "cardsPlayed": [
+                        {
+                            "id": 0,
+                            "type": "DEFUSE"
+                        }
+                    ],
+                    "placedKittenPosition": 0
+                },
+                {
+                    "id": 43,
+                    "turnNumber": 36,
+                    "type": "DRAW",
+                    "authorId": 0,
+                    "eliminated": true
+                }
+            ]
+        },
+        {
+            "gameId": 4,
+            "playerNames": [
+                "a",
+                "b"
+            ],
+            "winnerName": "a",
+            "turnsPlayed": 24,
+            "moves": [
+                {
+                    "id": 1,
+                    "turnNumber": 0,
+                    "type": "START"
+                },
+                {
+                    "id": 2,
+                    "turnNumber": 1,
+                    "type": "PLAY_CARD",
+                    "authorId": 0,
+                    "cardsPlayed": [
+                        {
+                            "id": 27,
+                            "type": "SEE_FUTURE"
+                        }
+                    ]
+                },
+                {
+                    "id": 3,
+                    "turnNumber": 1,
+                    "type": "PLAY_CARD",
+                    "authorId": 1,
+                    "cardsPlayed": [
+                        {
+                            "id": 7,
+                            "type": "NOPE"
+                        }
+                    ]
+                },
+                {
+                    "id": 4,
+                    "turnNumber": 1,
+                    "type": "PLAY_CARD",
+                    "authorId": 0,
+                    "cardsPlayed": [
+                        {
+                            "id": 6,
+                            "type": "NOPE"
+                        }
+                    ]
+                },
+                {
+                    "id": 5,
+                    "turnNumber": 1,
+                    "type": "PLAY_CARD",
+                    "authorId": 1,
+                    "cardsPlayed": [
+                        {
+                            "id": 7,
+                            "type": "NOPE"
+                        }
+                    ]
+                },
+                {
+                    "id": 6,
+                    "turnNumber": 1,
+                    "type": "PLAY_CARD",
+                    "authorId": 0,
+                    "cardsPlayed": [
+                        {
+                            "id": 6,
+                            "type": "NOPE"
+                        }
+                    ]
+                },
+                {
+                    "id": 7,
+                    "turnNumber": 1,
+                    "type": "PLAY_CARD",
+                    "authorId": 1,
+                    "cardsPlayed": [
+                        {
+                            "id": 7,
+                            "type": "NOPE"
+                        }
+                    ]
+                },
+                {
+                    "id": 8,
+                    "turnNumber": 1,
+                    "type": "PLAY_CARD",
+                    "authorId": 0,
+                    "cardsPlayed": [
+                        {
+                            "id": 6,
+                            "type": "NOPE"
+                        }
+                    ]
+                },
+                {
+                    "id": 9,
+                    "turnNumber": 1,
+                    "type": "PLAY_CARD",
+                    "authorId": 1,
+                    "cardsPlayed": [
+                        {
+                            "id": 7,
+                            "type": "NOPE"
+                        }
+                    ]
+                },
+                {
+                    "id": 10,
+                    "turnNumber": 1,
+                    "type": "PLAY_CARD",
+                    "authorId": 0,
+                    "cardsPlayed": [
+                        {
+                            "id": 6,
+                            "type": "NOPE"
+                        }
+                    ]
+                },
+                {
+                    "id": 11,
+                    "turnNumber": 1,
+                    "type": "PLAY_CARD",
+                    "authorId": 1,
+                    "cardsPlayed": [
+                        {
+                            "id": 7,
+                            "type": "NOPE"
+                        }
+                    ]
+                },
+                {
+                    "id": 12,
+                    "turnNumber": 1,
+                    "type": "PLAY_CARD",
+                    "authorId": 0,
+                    "cardsPlayed": [
+                        {
+                            "id": 6,
+                            "type": "NOPE"
+                        }
+                    ]
+                },
+                {
+                    "id": 13,
+                    "turnNumber": 1,
+                    "type": "PLAY_CARD",
+                    "authorId": 1,
+                    "cardsPlayed": [
+                        {
+                            "id": 7,
+                            "type": "NOPE"
+                        }
+                    ]
+                },
+                {
+                    "id": 14,
+                    "turnNumber": 1,
+                    "type": "PLAY_CARD",
+                    "authorId": 0,
+                    "cardsPlayed": [
+                        {
+                            "id": 6,
+                            "type": "NOPE"
+                        }
+                    ]
+                },
+                {
+                    "id": 15,
+                    "turnNumber": 1,
+                    "type": "PLAY_CARD",
+                    "authorId": 1,
+                    "cardsPlayed": [
+                        {
+                            "id": 7,
+                            "type": "NOPE"
+                        }
+                    ]
+                },
+                {
+                    "id": 16,
+                    "turnNumber": 1,
+                    "type": "PLAY_CARD",
+                    "authorId": 0,
+                    "cardsPlayed": [
+                        {
+                            "id": 6,
+                            "type": "NOPE"
+                        }
+                    ]
+                },
+                {
+                    "id": 17,
+                    "turnNumber": 1,
+                    "type": "PLAY_CARD",
+                    "authorId": 1,
+                    "cardsPlayed": [
+                        {
+                            "id": 7,
+                            "type": "NOPE"
+                        }
+                    ]
+                },
+                {
+                    "id": 18,
+                    "turnNumber": 1,
+                    "type": "PLAY_CARD",
+                    "authorId": 0,
+                    "cardsPlayed": [
+                        {
+                            "id": 6,
+                            "type": "NOPE"
+                        }
+                    ]
+                },
+                {
+                    "id": 19,
+                    "turnNumber": 1,
+                    "type": "PLAY_CARD",
+                    "authorId": 1,
+                    "cardsPlayed": [
+                        {
+                            "id": 7,
+                            "type": "NOPE"
+                        }
+                    ]
+                },
+                {
+                    "id": 20,
+                    "turnNumber": 1,
+                    "type": "PLAY_CARD",
+                    "authorId": 0,
+                    "cardsPlayed": [
+                        {
+                            "id": 6,
+                            "type": "NOPE"
+                        }
+                    ]
+                },
+                {
+                    "id": 21,
+                    "turnNumber": 1,
+                    "type": "DRAW",
+                    "authorId": 0
+                },
+                {
+                    "id": 22,
+                    "turnNumber": 2,
+                    "type": "PLAY_CARD",
+                    "authorId": 1,
+                    "cardsPlayed": [
+                        {
+                            "id": 16,
+                            "type": "SKIP"
+                        }
+                    ]
+                },
+                {
+                    "id": 23,
+                    "turnNumber": 3,
+                    "type": "DRAW",
+                    "authorId": 0
+                },
+                {
+                    "id": 24,
+                    "turnNumber": 4,
+                    "type": "DRAW",
+                    "authorId": 1
+                },
+                {
+                    "id": 25,
+                    "turnNumber": 5,
+                    "type": "PLAY_CARD",
+                    "authorId": 0,
+                    "cardsPlayed": [
+                        {
+                            "id": 30,
+                            "type": "SEE_FUTURE"
+                        }
+                    ]
+                },
+                {
+                    "id": 26,
+                    "turnNumber": 5,
+                    "type": "DRAW",
+                    "authorId": 0
+                },
+                {
+                    "id": 27,
+                    "turnNumber": 6,
+                    "type": "DRAW",
+                    "authorId": 1
+                },
+                {
+                    "id": 28,
+                    "turnNumber": 7,
+                    "type": "DRAW",
+                    "authorId": 0
+                },
+                {
+                    "id": 29,
+                    "turnNumber": 8,
+                    "type": "PLAY_CARD",
+                    "authorId": 1,
+                    "cardsPlayed": [
+                        {
+                            "id": 24,
+                            "type": "SHUFFLE"
+                        }
+                    ]
+                },
+                {
+                    "id": 30,
+                    "turnNumber": 8,
+                    "type": "DRAW",
+                    "authorId": 1
+                },
+                {
+                    "id": 31,
+                    "turnNumber": 9,
+                    "type": "DRAW",
+                    "authorId": 0
+                },
+                {
+                    "id": 32,
+                    "turnNumber": 10,
+                    "type": "DRAW",
+                    "authorId": 1
+                },
+                {
+                    "id": 33,
+                    "turnNumber": 11,
+                    "type": "DRAW",
+                    "authorId": 0
+                },
+                {
+                    "id": 34,
+                    "turnNumber": 12,
+                    "type": "DRAW",
+                    "authorId": 1
+                },
+                {
+                    "id": 35,
+                    "turnNumber": 13,
+                    "type": "DRAW",
+                    "authorId": 0
+                },
+                {
+                    "id": 36,
+                    "turnNumber": 14,
+                    "type": "DRAW",
+                    "authorId": 1
+                },
+                {
+                    "id": 37,
+                    "turnNumber": 15,
+                    "type": "DRAW",
+                    "authorId": 0
+                },
+                {
+                    "id": 38,
+                    "turnNumber": 16,
+                    "type": "DRAW",
+                    "authorId": 1
+                },
+                {
+                    "id": 39,
+                    "turnNumber": 17,
+                    "type": "DRAW",
+                    "authorId": 0
+                },
+                {
+                    "id": 40,
+                    "turnNumber": 18,
+                    "type": "DRAW",
+                    "authorId": 1
+                },
+                {
+                    "id": 41,
+                    "turnNumber": 18,
+                    "type": "PLAY_CARD",
+                    "authorId": 1,
+                    "cardsPlayed": [
+                        {
+                            "id": 3,
+                            "type": "DEFUSE"
+                        }
+                    ],
+                    "placedKittenPosition": 0
+                },
+                {
+                    "id": 42,
+                    "turnNumber": 19,
+                    "type": "DRAW",
+                    "authorId": 0
+                },
+                {
+                    "id": 43,
+                    "turnNumber": 19,
+                    "type": "PLAY_CARD",
+                    "authorId": 0,
+                    "cardsPlayed": [
+                        {
+                            "id": 1,
+                            "type": "DEFUSE"
+                        }
+                    ],
+                    "placedKittenPosition": 0
+                },
+                {
+                    "id": 44,
+                    "turnNumber": 20,
+                    "type": "DRAW",
+                    "authorId": 1
+                },
+                {
+                    "id": 45,
+                    "turnNumber": 20,
+                    "type": "PLAY_CARD",
+                    "authorId": 1,
+                    "cardsPlayed": [
+                        {
+                            "id": 5,
+                            "type": "DEFUSE"
+                        }
+                    ],
+                    "placedKittenPosition": 0
+                },
+                {
+                    "id": 46,
+                    "turnNumber": 21,
+                    "type": "DRAW",
+                    "authorId": 0
+                },
+                {
+                    "id": 47,
+                    "turnNumber": 21,
+                    "type": "PLAY_CARD",
+                    "authorId": 0,
+                    "cardsPlayed": [
+                        {
+                            "id": 2,
+                            "type": "DEFUSE"
+                        }
+                    ],
+                    "placedKittenPosition": 0
+                },
+                {
+                    "id": 48,
+                    "turnNumber": 22,
+                    "type": "PLAY_CARD",
+                    "authorId": 1,
+                    "cardsPlayed": [
+                        {
+                            "id": 13,
+                            "type": "ATTACK"
+                        }
+                    ]
+                },
+                {
+                    "id": 49,
+                    "turnNumber": 23,
+                    "type": "PLAY_CARD",
+                    "authorId": 0,
+                    "cardsPlayed": [
+                        {
+                            "id": 18,
+                            "type": "SKIP"
+                        }
+                    ]
+                },
+                {
+                    "id": 50,
+                    "turnNumber": 24,
+                    "type": "PLAY_CARD",
+                    "authorId": 0,
+                    "cardsPlayed": [
+                        {
+                            "id": 17,
+                            "type": "SKIP"
+                        }
+                    ]
+                },
+                {
+                    "id": 51,
+                    "turnNumber": 25,
+                    "type": "DRAW",
+                    "authorId": 1,
+                    "eliminated": true
+                }
+            ]
+        }
+    ]
+}

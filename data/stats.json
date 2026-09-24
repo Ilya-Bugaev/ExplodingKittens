@@ -1,0 +1,18 @@
+{
+    "players": [
+        {
+            "playerId": 1,
+            "name": "a",
+            "wins": 5,
+            "gamesPlayed": 12,
+            "winRate": 0.4166666666666667
+        },
+        {
+            "playerId": 2,
+            "name": "b",
+            "wins": 2,
+            "gamesPlayed": 12,
+            "winRate": 0.16666666666666666
+        }
+    ]
+}
